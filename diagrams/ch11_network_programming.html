@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 11: Network Programming - CS:APP</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh}.header{background:linear-gradient(135deg,#161b22,#1a1f2e);padding:24px 32px;border-bottom:1px solid #30363d}.header h1{font-size:1.6em;color:#58a6ff;margin-bottom:4px}.header p{color:#8b949e;font-size:.9em}.container{display:flex;min-height:calc(100vh - 80px)}.sidebar{width:260px;background:#161b22;border-right:1px solid #30363d;padding:16px 0;flex-shrink:0}.sidebar a{display:block;padding:10px 20px;color:#8b949e;text-decoration:none;font-size:.85em;border-left:3px solid transparent;transition:all .2s}.sidebar a:hover{color:#c9d1d9;background:#1c2129}.sidebar a.active{color:#58a6ff;border-left-color:#58a6ff;background:#1c2129}.content{flex:1;padding:32px;max-width:1100px}.diagram{display:none}.diagram.active{display:block}.diagram h2{color:#58a6ff;margin-bottom:16px}.diagram p.desc{color:#8b949e;margin-bottom:24px;line-height:1.6}.card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin:16px 0}table{width:100%;border-collapse:collapse;margin:12px 0}th,td{padding:8px 12px;text-align:left;border:1px solid #30363d;font-size:.82em}th{background:#1c2129;color:#58a6ff}
+.flow-box{background:#1c2129;border:2px solid #30363d;border-radius:10px;padding:14px 18px;text-align:center;min-width:100px;transition:all .3s;cursor:pointer}
+.flow-box:hover{border-color:#58a6ff;transform:translateY(-2px)}
+.cs-diagram{display:flex;gap:40px;justify-content:center;flex-wrap:wrap;margin:24px 0}
+.cs-col{display:flex;flex-direction:column;gap:6px;align-items:center;min-width:160px}
+.cs-step{padding:10px 16px;border-radius:8px;font-size:.82em;font-weight:600;text-align:center;width:180px;transition:all .3s;cursor:pointer;position:relative}
+.cs-step:hover{transform:scale(1.05)}
+.cs-arrow{color:#8b949e;font-size:1.2em}
+.cs-connect{display:flex;align-items:center;gap:8px;font-size:.75em;color:#ffa657;font-weight:600}
+.net-layer{display:flex;gap:2px;margin:16px 0;justify-content:center}
+.net-box{padding:12px 20px;text-align:center;border-radius:6px;font-size:.82em;font-weight:600;min-width:100px;transition:all .3s;cursor:pointer}
+.net-box:hover{filter:brightness(1.2);transform:translateY(-2px)}
+.http-section{display:flex;gap:16px;flex-wrap:wrap;margin:16px 0}
+.http-card{background:#1c2129;border:1px solid #30363d;border-radius:10px;padding:16px;flex:1;min-width:300px}
+.http-card h3{font-size:.9em;margin-bottom:8px}
+.code{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;font-family:monospace;font-size:.78em;color:#c9d1d9;line-height:1.6;overflow-x:auto;white-space:pre}
+@media(max-width:768px){.container{flex-direction:column}.sidebar{width:100%;display:flex;overflow-x:auto}.sidebar a{white-space:nowrap}.content{padding:16px}}
+</style>
+</head>
+<body>
+<div class="header"><h1>Chapter 11: Network Programming</h1><p>CS:APP - Computer Systems: A Programmer's Perspective, 2nd Edition</p></div>
+<div class="container">
+<nav class="sidebar">
+  <a href="#" class="active" onclick="showD('clientserver',this)">Client-Server Model</a>
+  <a href="#" onclick="showD('network',this)">Network Architecture</a>
+  <a href="#" onclick="showD('ipdns',this)">IP & DNS</a>
+  <a href="#" onclick="showD('sockets',this)">Sockets Interface</a>
+  <a href="#" onclick="showD('http',this)">HTTP Protocol</a>
+  <a href="#" onclick="showD('webserver',this)">Web Server</a>
+</nav>
+<main class="content">
+
+  <div id="clientserver" class="diagram active">
+    <h2>Client-Server Model</h2>
+    <p class="desc">Every network application is based on the client-server model.</p>
+    <div style="display:flex;gap:40px;justify-content:center;align-items:center;flex-wrap:wrap;margin:24px 0">
+      <div class="flow-box" style="border-color:#58a6ff;min-width:150px">
+        <div style="font-size:2em">&#128187;</div>
+        <div style="color:#58a6ff;font-weight:600">Client</div>
+        <div style="font-size:.7em;color:#8b949e">Initiates request</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;align-items:center">
+        <div style="font-size:.75em;color:#7ee787">1. Request &rarr;</div>
+        <div style="font-size:1.5em;color:#ffa657">&#8644;</div>
+        <div style="font-size:.75em;color:#d19a66">&larr; 2. Response</div>
+      </div>
+      <div class="flow-box" style="border-color:#7ee787;min-width:150px">
+        <div style="font-size:2em">&#127760;</div>
+        <div style="color:#7ee787;font-weight:600">Server</div>
+        <div style="font-size:.7em;color:#8b949e">Processes & responds</div>
+      </div>
+    </div>
+    <div class="card">
+      <p style="color:#8b949e;font-size:.82em;line-height:1.6">
+        A <strong style="color:#58a6ff">client</strong> is a process that initiates a communication. A <strong style="color:#7ee787">server</strong> is a long-running process that waits for and responds to requests. A single host can run multiple clients and servers simultaneously. The client and server can be on the same host or different hosts connected by a network.
+      </p>
+    </div>
+  </div>
+
+  <div id="network" class="diagram">
+    <h2>Network Architecture</h2>
+    <p class="desc">How data moves from one host to another through the network hierarchy.</p>
+    <div class="net-layer">
+      <div class="net-box" style="background:#58a6ff33;color:#58a6ff">Host A</div>
+      <div class="net-box" style="background:#7ee78722;color:#7ee787">LAN (Ethernet)</div>
+      <div class="net-box" style="background:#ffa65722;color:#ffa657">Router</div>
+      <div class="net-box" style="background:#7ee78722;color:#7ee787">WAN</div>
+      <div class="net-box" style="background:#ffa65722;color:#ffa657">Router</div>
+      <div class="net-box" style="background:#7ee78722;color:#7ee787">LAN</div>
+      <div class="net-box" style="background:#58a6ff33;color:#58a6ff">Host B</div>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">Protocol Encapsulation</h3>
+      <table>
+        <tr><th>Layer</th><th>Protocol</th><th>Data Unit</th><th>Function</th></tr>
+        <tr><td style="color:#c678dd">Application</td><td>HTTP, FTP, DNS</td><td>Message</td><td>Defines the data format for applications</td></tr>
+        <tr><td style="color:#58a6ff">Transport</td><td>TCP, UDP</td><td>Segment</td><td>Process-to-process delivery, reliability</td></tr>
+        <tr><td style="color:#7ee787">Network</td><td>IP</td><td>Datagram</td><td>Host-to-host delivery, routing</td></tr>
+        <tr><td style="color:#d19a66">Link</td><td>Ethernet, WiFi</td><td>Frame</td><td>Node-to-node delivery on a LAN</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div id="ipdns" class="diagram">
+    <h2>IP Addresses & DNS</h2>
+    <p class="desc">Every Internet host is identified by a 32-bit IP address. DNS maps human-readable names to IP addresses.</p>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">IP Address Structure</h3>
+      <table>
+        <tr><th>Format</th><th>Example</th><th>Notes</th></tr>
+        <tr><td>Dotted decimal</td><td style="color:#7ee787;font-family:monospace">128.2.194.242</td><td>Human-readable</td></tr>
+        <tr><td>Hex (network byte order)</td><td style="color:#7ee787;font-family:monospace">0x8002C2F2</td><td>Big-endian (network byte order)</td></tr>
+        <tr><td>struct in_addr</td><td style="color:#7ee787;font-family:monospace">s_addr = 0x8002C2F2</td><td>Stored as 32-bit unsigned integer</td></tr>
+      </table>
+      <p style="color:#8b949e;font-size:.8em;margin-top:8px"><strong>Network byte order:</strong> Always big-endian. Use htonl()/ntohl() to convert between host and network byte order.</p>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">DNS Resolution</h3>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;margin:12px 0">
+        <div class="flow-box" style="border-color:#58a6ff;padding:10px"><div style="color:#58a6ff;font-size:.8em">Application</div><div style="font-size:.7em;color:#8b949e">www.cmu.edu</div></div>
+        <div style="color:#58a6ff">&rarr;</div>
+        <div class="flow-box" style="border-color:#d19a66;padding:10px"><div style="color:#d19a66;font-size:.8em">Local DNS</div></div>
+        <div style="color:#58a6ff">&rarr;</div>
+        <div class="flow-box" style="border-color:#e5c07b;padding:10px"><div style="color:#e5c07b;font-size:.8em">Root DNS</div></div>
+        <div style="color:#58a6ff">&rarr;</div>
+        <div class="flow-box" style="border-color:#98c379;padding:10px"><div style="color:#98c379;font-size:.8em">.edu TLD</div></div>
+        <div style="color:#58a6ff">&rarr;</div>
+        <div class="flow-box" style="border-color:#7ee787;padding:10px"><div style="color:#7ee787;font-size:.8em">cmu.edu Auth</div><div style="font-size:.7em;color:#8b949e">128.2.194.242</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="sockets" class="diagram">
+    <h2>Sockets Interface</h2>
+    <p class="desc">The complete client-server connection lifecycle using the Berkeley sockets API.</p>
+    <div class="cs-diagram">
+      <div class="cs-col">
+        <div style="color:#7ee787;font-weight:600;font-size:.9em;margin-bottom:8px">Server</div>
+        <div class="cs-step" style="background:#7ee78722;color:#7ee787">socket()</div>
+        <div class="cs-arrow">&darr;</div>
+        <div class="cs-step" style="background:#7ee78722;color:#7ee787">bind()</div>
+        <div class="cs-arrow">&darr;</div>
+        <div class="cs-step" style="background:#7ee78722;color:#7ee787">listen()</div>
+        <div class="cs-arrow">&darr;</div>
+        <div class="cs-step" style="background:#ffa65722;color:#ffa657">accept() (blocks)</div>
+        <div class="cs-connect">&larr; connection request &larr;</div>
+        <div class="cs-step" style="background:#7ee78722;color:#7ee787">read() / write()</div>
+        <div class="cs-arrow">&darr;</div>
+        <div class="cs-step" style="background:#e06c7522;color:#e06c75">close()</div>
+      </div>
+      <div class="cs-col">
+        <div style="color:#58a6ff;font-weight:600;font-size:.9em;margin-bottom:8px">Client</div>
+        <div class="cs-step" style="background:#58a6ff22;color:#58a6ff">socket()</div>
+        <div class="cs-arrow">&darr;</div>
+        <div class="cs-step" style="background:#58a6ff22;color:#58a6ff">connect()</div>
+        <div style="height:40px"></div>
+        <div class="cs-connect">&rarr; connection established &rarr;</div>
+        <div class="cs-step" style="background:#58a6ff22;color:#58a6ff">write() / read()</div>
+        <div class="cs-arrow">&darr;</div>
+        <div class="cs-step" style="background:#e06c7522;color:#e06c75">close()</div>
+      </div>
+    </div>
+    <div class="card">
+      <p style="color:#8b949e;font-size:.82em;line-height:1.6">
+        <strong style="color:#ffa657">Socket pair:</strong> A connection is uniquely identified by (client IP:port, server IP:port).<br>
+        <strong style="color:#ffa657">Well-known ports:</strong> 80 (HTTP), 443 (HTTPS), 22 (SSH), 25 (SMTP).<br>
+        <strong style="color:#ffa657">Ephemeral ports:</strong> Client ports assigned automatically by the kernel (49152-65535).
+      </p>
+    </div>
+  </div>
+
+  <div id="http" class="diagram">
+    <h2>HTTP Protocol</h2>
+    <p class="desc">The Hypertext Transfer Protocol - a simple text-based request/response protocol.</p>
+    <div class="http-section">
+      <div class="http-card" style="border-color:#58a6ff">
+        <h3 style="color:#58a6ff">HTTP Request</h3>
+        <div class="code"><span style="color:#7ee787">GET</span> /index.html <span style="color:#d19a66">HTTP/1.1</span>
+Host: www.example.com
+User-Agent: Mozilla/5.0
+Accept: text/html
+Connection: close
+<span style="color:#8b949e">(blank line = end of headers)</span></div>
+      </div>
+      <div class="http-card" style="border-color:#7ee787">
+        <h3 style="color:#7ee787">HTTP Response</h3>
+        <div class="code"><span style="color:#d19a66">HTTP/1.1</span> <span style="color:#7ee787">200 OK</span>
+Content-Type: text/html
+Content-Length: 1234
+Connection: close
+
+&lt;html&gt;...&lt;/html&gt;</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:8px">HTTP Status Codes</h3>
+      <table>
+        <tr><th>Code</th><th>Status</th><th>Meaning</th></tr>
+        <tr><td style="color:#7ee787">200</td><td>OK</td><td>Request succeeded</td></tr>
+        <tr><td style="color:#58a6ff">301</td><td>Moved Permanently</td><td>Resource moved to new URL</td></tr>
+        <tr><td style="color:#d19a66">403</td><td>Forbidden</td><td>No permission to access</td></tr>
+        <tr><td style="color:#e06c75">404</td><td>Not Found</td><td>Resource doesn't exist</td></tr>
+        <tr><td style="color:#e06c75">500</td><td>Internal Server Error</td><td>Server-side error</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div id="webserver" class="diagram">
+    <h2>Tiny Web Server Architecture</h2>
+    <p class="desc">A minimal but functional web server that serves both static and dynamic content.</p>
+    <div class="card">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;margin:12px 0">
+        <div class="flow-box" style="border-color:#58a6ff;padding:10px"><div style="color:#58a6ff;font-size:.8em;font-weight:600">accept()</div><div style="font-size:.65em;color:#8b949e">New connection</div></div>
+        <div style="color:#58a6ff">&rarr;</div>
+        <div class="flow-box" style="border-color:#d19a66;padding:10px"><div style="color:#d19a66;font-size:.8em;font-weight:600">Parse Request</div><div style="font-size:.65em;color:#8b949e">Method, URI, Version</div></div>
+        <div style="color:#58a6ff">&rarr;</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="flow-box" style="border-color:#7ee787;padding:10px"><div style="color:#7ee787;font-size:.8em;font-weight:600">Static</div><div style="font-size:.65em;color:#8b949e">serve_static(): send file</div></div>
+          <div class="flow-box" style="border-color:#c678dd;padding:10px"><div style="color:#c678dd;font-size:.8em;font-weight:600">Dynamic</div><div style="font-size:.65em;color:#8b949e">serve_dynamic(): fork+execve CGI</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:8px">CGI (Common Gateway Interface)</h3>
+      <p style="color:#8b949e;font-size:.82em;line-height:1.6">
+        For dynamic content, the server: (1) fork()s a child process, (2) sets environment variables (QUERY_STRING, etc.), (3) redirects child's stdout to the client socket via dup2(), (4) execve()s the CGI program. The CGI program writes its output to stdout, which goes directly to the client.
+      </p>
+    </div>
+  </div>
+
+</main></div>
+<script>
+function showD(id,el){document.querySelectorAll('.diagram').forEach(d=>d.classList.remove('active'));document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));document.getElementById(id).classList.add('active');el.classList.add('active')}
+</script>
+</body>
+</html>

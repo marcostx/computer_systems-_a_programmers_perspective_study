@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 2: Representing and Manipulating Information - CS:APP</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh}
+.header{background:linear-gradient(135deg,#161b22,#1a1f2e);padding:24px 32px;border-bottom:1px solid #30363d}
+.header h1{font-size:1.6em;color:#58a6ff;margin-bottom:4px}
+.header p{color:#8b949e;font-size:.9em}
+.container{display:flex;min-height:calc(100vh - 80px)}
+.sidebar{width:260px;background:#161b22;border-right:1px solid #30363d;padding:16px 0;flex-shrink:0}
+.sidebar a{display:block;padding:10px 20px;color:#8b949e;text-decoration:none;font-size:.85em;border-left:3px solid transparent;transition:all .2s}
+.sidebar a:hover{color:#c9d1d9;background:#1c2129}
+.sidebar a.active{color:#58a6ff;border-left-color:#58a6ff;background:#1c2129}
+.content{flex:1;padding:32px;max-width:1100px}
+.diagram{display:none}.diagram.active{display:block}
+.diagram h2{color:#58a6ff;margin-bottom:16px}
+.diagram p.desc{color:#8b949e;margin-bottom:24px;line-height:1.6}
+.card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin:16px 0}
+input[type=text],input[type=number]{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 12px;color:#e6edf3;font-family:monospace;font-size:1em;width:200px}
+input:focus{outline:none;border-color:#58a6ff}
+button{background:#238636;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-size:.85em;transition:background .2s}
+button:hover{background:#2ea043}
+.result{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px 16px;margin-top:12px;font-family:monospace;color:#7ee787;min-height:40px}
+.bit-container{display:flex;gap:2px;margin:16px 0;flex-wrap:wrap;justify-content:center}
+.bit{width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:#1c2129;border:2px solid #30363d;border-radius:6px;cursor:pointer;font-family:monospace;font-weight:bold;font-size:1.1em;transition:all .2s;user-select:none}
+.bit.on{background:#238636;border-color:#2ea043;color:#fff}
+.bit.off{background:#1c2129;color:#8b949e}
+.bit:hover{transform:scale(1.1)}
+.bit-label{text-align:center;font-size:.7em;color:#8b949e;margin-top:2px}
+.float-section{display:flex;gap:2px;align-items:center;margin:8px 0}
+.float-section .bit{width:36px;height:36px;font-size:.9em}
+.section-label{font-size:.75em;text-align:center;padding:4px 8px;border-radius:4px;margin-bottom:4px;font-weight:600}
+table{width:100%;border-collapse:collapse;margin:12px 0}
+th,td{padding:8px 12px;text-align:left;border:1px solid #30363d;font-size:.85em}
+th{background:#1c2129;color:#58a6ff}
+td{color:#c9d1d9;font-family:monospace}
+.endian-box{display:flex;gap:4px;margin:8px 0}
+.byte-cell{width:80px;height:50px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid #30363d;border-radius:6px;background:#1c2129;font-family:monospace;font-size:.9em}
+.byte-cell .addr{font-size:.65em;color:#8b949e}
+.byte-cell .val{color:#7ee787;font-weight:bold}
+.bool-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}
+.bool-card{background:#1c2129;border:1px solid #30363d;border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:all .3s}
+.bool-card:hover{border-color:#58a6ff}
+.bool-card h3{color:#ffa657;font-size:.95em;margin-bottom:8px}
+.gate-io{display:flex;gap:8px;justify-content:center;margin:4px 0;font-family:monospace;font-size:.85em}
+.gate-btn{width:32px;height:32px;border-radius:50%;border:2px solid #30363d;background:#0d1117;color:#c9d1d9;cursor:pointer;font-family:monospace;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.gate-btn.on{background:#238636;border-color:#2ea043;color:#fff}
+.overflow-wheel{width:300px;height:300px;margin:20px auto;position:relative}
+@media(max-width:768px){.container{flex-direction:column}.sidebar{width:100%;display:flex;overflow-x:auto;padding:8px}.sidebar a{white-space:nowrap}.content{padding:16px}}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Chapter 2: Representing and Manipulating Information</h1>
+  <p>CS:APP - Computer Systems: A Programmer's Perspective, 2nd Edition</p>
+</div>
+<div class="container">
+  <nav class="sidebar">
+    <a href="#" class="active" onclick="showD('converter',this)">Hex/Bin/Dec Converter</a>
+    <a href="#" onclick="showD('endian',this)">Byte Ordering</a>
+    <a href="#" onclick="showD('twos',this)">Two's Complement</a>
+    <a href="#" onclick="showD('float',this)">IEEE 754 Float</a>
+    <a href="#" onclick="showD('overflow',this)">Integer Overflow</a>
+    <a href="#" onclick="showD('boolean',this)">Boolean Algebra</a>
+  </nav>
+  <main class="content">
+
+    <!-- Converter -->
+    <div id="converter" class="diagram active">
+      <h2>Hexadecimal / Binary / Decimal Converter</h2>
+      <p class="desc">Enter a value in any format and see all representations. Prefix hex with 0x, binary with 0b.</p>
+      <div class="card">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <input type="text" id="conv-input" placeholder="e.g. 255, 0xFF, 0b11111111" onkeyup="convert()">
+          <button onclick="convert()">Convert</button>
+        </div>
+        <div class="result" id="conv-result">Enter a value above...</div>
+      </div>
+      <div class="card">
+        <h3 style="color:#ffa657;margin-bottom:12px">Hex Digit Reference</h3>
+        <table>
+          <tr><th>Hex</th><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th></tr>
+          <tr><td style="color:#58a6ff">Dec</td><td>0</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>9</td><td>10</td><td>11</td><td>12</td><td>13</td><td>14</td><td>15</td></tr>
+          <tr><td style="color:#58a6ff">Bin</td><td>0000</td><td>0001</td><td>0010</td><td>0011</td><td>0100</td><td>0101</td><td>0110</td><td>0111</td><td>1000</td><td>1001</td><td>1010</td><td>1011</td><td>1100</td><td>1101</td><td>1110</td><td>1111</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Endianness -->
+    <div id="endian" class="diagram">
+      <h2>Byte Ordering (Endianness)</h2>
+      <p class="desc">Enter a 32-bit hex value to see how it is stored in memory under big-endian and little-endian byte ordering.</p>
+      <div class="card">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <span>0x</span><input type="text" id="endian-input" value="01234567" maxlength="8" style="width:140px" onkeyup="updateEndian()">
+          <button onclick="updateEndian()">Show</button>
+        </div>
+        <div style="margin-top:20px">
+          <h3 style="color:#7ee787;margin-bottom:8px">Big-Endian (MSB at lowest address)</h3>
+          <div class="endian-box" id="big-endian"></div>
+          <h3 style="color:#e06c75;margin:16px 0 8px">Little-Endian (LSB at lowest address)</h3>
+          <div class="endian-box" id="little-endian"></div>
+        </div>
+        <p style="color:#8b949e;font-size:.8em;margin-top:12px">Intel x86/x86-64 processors use <strong style="color:#e06c75">little-endian</strong> byte ordering. Most network protocols use <strong style="color:#7ee787">big-endian</strong> (network byte order).</p>
+      </div>
+    </div>
+
+    <!-- Two's Complement -->
+    <div id="twos" class="diagram">
+      <h2>Two's Complement (8-bit)</h2>
+      <p class="desc">Click bits to toggle them. The MSB (leftmost) is the sign bit with weight -128.</p>
+      <div class="card">
+        <div style="display:flex;justify-content:center;gap:24px;margin-bottom:8px">
+          <span class="section-label" style="background:#e06c7544;color:#e06c75">Sign bit (-128)</span>
+          <span class="section-label" style="background:#58a6ff33;color:#58a6ff">Magnitude bits</span>
+        </div>
+        <div class="bit-container" id="twos-bits"></div>
+        <div style="text-align:center;font-size:.75em;color:#8b949e;margin-bottom:12px">
+          <span id="twos-weights"></span>
+        </div>
+        <div class="result" id="twos-result"></div>
+        <div style="margin-top:12px;font-size:.8em;color:#8b949e">
+          <strong>Range for 8-bit two's complement:</strong> -128 (10000000) to +127 (01111111)<br>
+          <strong>Formula:</strong> B2T(X) = -x<sub>w-1</sub> &middot; 2<sup>w-1</sup> + &sum; x<sub>i</sub> &middot; 2<sup>i</sup>
+        </div>
+      </div>
+    </div>
+
+    <!-- IEEE 754 -->
+    <div id="float" class="diagram">
+      <h2>IEEE 754 Single-Precision Floating Point</h2>
+      <p class="desc">Click bits to toggle. See the resulting floating-point value. Formula: (-1)<sup>s</sup> &times; M &times; 2<sup>E</sup></p>
+      <div class="card">
+        <div style="display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap;justify-content:center">
+          <span class="section-label" style="background:#e06c7544;color:#e06c75">Sign (1 bit)</span>
+          <span class="section-label" style="background:#d19a6644;color:#d19a66">Exponent (8 bits)</span>
+          <span class="section-label" style="background:#58a6ff33;color:#58a6ff">Fraction (23 bits)</span>
+        </div>
+        <div style="display:flex;gap:2px;flex-wrap:wrap;justify-content:center" id="float-bits"></div>
+        <div class="result" id="float-result" style="margin-top:16px"></div>
+        <div style="margin-top:12px;font-size:.8em;color:#8b949e">
+          <strong>Normalized:</strong> E = exp - Bias (127), M = 1.frac<br>
+          <strong>Denormalized:</strong> E = 1 - Bias, M = 0.frac (when exp = 0)<br>
+          <strong>Special:</strong> exp = 255 &rarr; &plusmn;Infinity (frac=0) or NaN (frac&ne;0)
+        </div>
+      </div>
+    </div>
+
+    <!-- Integer Overflow -->
+    <div id="overflow" class="diagram">
+      <h2>Integer Overflow Visualization</h2>
+      <p class="desc">See how addition overflows in unsigned and two's complement 4-bit arithmetic.</p>
+      <div class="card">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <label>A: <input type="number" id="ov-a" value="12" min="0" max="15" style="width:60px"></label>
+          <label>B: <input type="number" id="ov-b" value="7" min="0" max="15" style="width:60px"></label>
+          <button onclick="calcOverflow()">Add (4-bit)</button>
+        </div>
+        <div class="result" id="overflow-result"></div>
+        <div style="margin-top:16px">
+          <h3 style="color:#ffa657;font-size:.9em;margin-bottom:8px">Key Insight</h3>
+          <p style="color:#8b949e;font-size:.85em;line-height:1.6">In w-bit unsigned arithmetic, if a+b &ge; 2<sup>w</sup>, the result wraps around (mod 2<sup>w</sup>). In two's complement, positive overflow produces a negative result, and the sum of two negatives can produce a positive result.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Boolean -->
+    <div id="boolean" class="diagram">
+      <h2>Boolean Algebra Operations</h2>
+      <p class="desc">Click input buttons to toggle between 0 and 1. See the result for each operation.</p>
+      <div class="bool-grid" id="bool-grid"></div>
+      <div class="card">
+        <h3 style="color:#ffa657;margin-bottom:12px">Bitwise Operations in C</h3>
+        <table>
+          <tr><th>Operation</th><th>C Operator</th><th>Example (0x69 op 0x55)</th><th>Result</th></tr>
+          <tr><td>AND</td><td>&amp;</td><td>0110 1001 &amp; 0101 0101</td><td>0100 0001 = 0x41</td></tr>
+          <tr><td>OR</td><td>|</td><td>0110 1001 | 0101 0101</td><td>0111 1101 = 0x7D</td></tr>
+          <tr><td>XOR</td><td>^</td><td>0110 1001 ^ 0101 0101</td><td>0011 1100 = 0x3C</td></tr>
+          <tr><td>NOT</td><td>~</td><td>~0110 1001</td><td>1001 0110 = 0x96</td></tr>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+function showD(id,el){
+  document.querySelectorAll('.diagram').forEach(d=>d.classList.remove('active'));
+  document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+}
+
+// Converter
+function convert(){
+  const v=document.getElementById('conv-input').value.trim();
+  if(!v){document.getElementById('conv-result').textContent='Enter a value above...';return}
+  let num;
+  try{
+    if(v.startsWith('0x')||v.startsWith('0X'))num=parseInt(v,16);
+    else if(v.startsWith('0b')||v.startsWith('0B'))num=parseInt(v.slice(2),2);
+    else num=parseInt(v,10);
+    if(isNaN(num))throw 0;
+  }catch(e){document.getElementById('conv-result').textContent='Invalid input';return}
+  const r=document.getElementById('conv-result');
+  const u32=num>>>0;
+  r.innerHTML=`<strong>Decimal:</strong> ${num}    <strong>Unsigned 32-bit:</strong> ${u32}\n<strong>Hex:</strong> 0x${u32.toString(16).toUpperCase().padStart(8,'0')}\n<strong>Binary:</strong> ${u32.toString(2).padStart(32,'0').replace(/(.{4})/g,'$1 ').trim()}\n<strong>Octal:</strong> 0${u32.toString(8)}`;
+  r.style.whiteSpace='pre';
+}
+
+// Endianness
+function updateEndian(){
+  let v=document.getElementById('endian-input').value.replace(/[^0-9a-fA-F]/g,'').padStart(8,'0').slice(0,8);
+  const bytes=[];
+  for(let i=0;i<8;i+=2)bytes.push(v.slice(i,i+2).toUpperCase());
+  let h='';
+  bytes.forEach((b,i)=>{h+=`<div class="byte-cell"><span class="addr">0x${(0x100+i).toString(16).slice(1)}</span><span class="val">${b}</span></div>`});
+  document.getElementById('big-endian').innerHTML=h;
+  h='';
+  bytes.slice().reverse().forEach((b,i)=>{h+=`<div class="byte-cell"><span class="addr">0x${(0x100+i).toString(16).slice(1)}</span><span class="val">${b}</span></div>`});
+  document.getElementById('little-endian').innerHTML=h;
+}
+
+// Two's complement
+let twosBits=[0,0,0,0,0,0,0,0];
+function renderTwos(){
+  const c=document.getElementById('twos-bits');
+  c.innerHTML='';
+  twosBits.forEach((b,i)=>{
+    const d=document.createElement('div');
+    d.className='bit '+(b?'on':'off');
+    d.textContent=b;
+    d.style.borderColor=i===0?'#e06c75':'#30363d';
+    if(b&&i===0)d.style.background='#e06c75';
+    d.onclick=()=>{twosBits[i]=1-twosBits[i];renderTwos()};
+    c.appendChild(d);
+  });
+  const weights=[-128,64,32,16,8,4,2,1];
+  document.getElementById('twos-weights').textContent=weights.map((w,i)=>(twosBits[i]?w:0)).join(' + ')+' = ';
+  let uval=0,sval=0;
+  twosBits.forEach((b,i)=>{uval+=b*Math.pow(2,7-i)});
+  sval=twosBits[0]?uval-256:uval;
+  document.getElementById('twos-result').innerHTML=
+    `<strong>Unsigned:</strong> ${uval}  |  <strong>Signed (Two's Complement):</strong> ${sval}  |  <strong>Hex:</strong> 0x${uval.toString(16).toUpperCase().padStart(2,'0')}`;
+}
+
+// IEEE 754
+let floatBits=new Array(32).fill(0);
+function renderFloat(){
+  const c=document.getElementById('float-bits');
+  c.innerHTML='';
+  floatBits.forEach((b,i)=>{
+    const d=document.createElement('div');
+    d.className='bit '+(b?'on':'off');
+    d.textContent=b;
+    if(i===0){d.style.borderColor='#e06c75';if(b)d.style.background='#e06c75'}
+    else if(i<9){d.style.borderColor='#d19a66';if(b)d.style.background='#d19a66'}
+    else{d.style.borderColor='#58a6ff';if(b)d.style.background='#238636'}
+    d.style.width='28px';d.style.height='28px';d.style.fontSize='.75em';
+    d.onclick=()=>{floatBits[i]=1-floatBits[i];renderFloat()};
+    c.appendChild(d);
+  });
+  const s=floatBits[0];
+  let exp=0;for(let i=1;i<9;i++)exp=exp*2+floatBits[i];
+  let frac=0;for(let i=9;i<32;i++)frac+=floatBits[i]*Math.pow(2,-(i-8));
+  let val,type;
+  if(exp===0&&frac===0){val=s?-0:0;type='Zero'}
+  else if(exp===0){val=Math.pow(-1,s)*frac*Math.pow(2,-126);type='Denormalized'}
+  else if(exp===255&&frac===0){val=s?-Infinity:Infinity;type='Infinity'}
+  else if(exp===255){val=NaN;type='NaN'}
+  else{val=Math.pow(-1,s)*(1+frac)*Math.pow(2,exp-127);type='Normalized'}
+  document.getElementById('float-result').innerHTML=
+    `<strong>Value:</strong> ${val}  |  <strong>Type:</strong> ${type}\n<strong>Sign:</strong> ${s}  |  <strong>Exponent bits:</strong> ${exp} (E=${exp===0?-126:exp-127})  |  <strong>Fraction:</strong> ${frac.toFixed(8)}  |  <strong>M:</strong> ${exp===0?frac:(1+frac)}`;
+  document.getElementById('float-result').style.whiteSpace='pre-wrap';
+}
+
+// Overflow
+function calcOverflow(){
+  let a=parseInt(document.getElementById('ov-a').value)||0;
+  let b=parseInt(document.getElementById('ov-b').value)||0;
+  a=a&0xF;b=b&0xF;
+  const usum=(a+b)&0xF;
+  const sa=a>=8?a-16:a;
+  const sb=b>=8?b-16:b;
+  const trueSum=sa+sb;
+  let ssum=trueSum;
+  if(ssum>7)ssum-=16;else if(ssum<-8)ssum+=16;
+  const r=document.getElementById('overflow-result');
+  const uOverflow=(a+b)>15;
+  const sOverflow=trueSum>7||trueSum<-8;
+  r.innerHTML=`<strong>Unsigned:</strong> ${a} + ${b} = ${a+b} &rarr; mod 16 = ${usum} ${uOverflow?'<span style="color:#e06c75">(OVERFLOW!)</span>':'<span style="color:#7ee787">(OK)</span>'}\n<strong>Signed:</strong> ${sa} + ${sb} = ${trueSum} &rarr; wraps to ${ssum} ${sOverflow?'<span style="color:#e06c75">(OVERFLOW!)</span>':'<span style="color:#7ee787">(OK)</span>'}\n<strong>Binary:</strong> ${a.toString(2).padStart(4,'0')} + ${b.toString(2).padStart(4,'0')} = ${((a+b)&0xF).toString(2).padStart(4,'0')}`;
+  r.style.whiteSpace='pre-wrap';
+}
+
+// Boolean
+const boolOps=[
+  {name:'AND',sym:'&',fn:(a,b)=>a&b},
+  {name:'OR',sym:'|',fn:(a,b)=>a|b},
+  {name:'XOR',sym:'^',fn:(a,b)=>a^b},
+  {name:'NOT A',sym:'~',fn:(a)=>1-a,unary:true}
+];
+let boolInputs=[[0,0],[0,0],[0,0],[0,0]];
+function renderBool(){
+  const g=document.getElementById('bool-grid');
+  g.innerHTML='';
+  boolOps.forEach((op,oi)=>{
+    const d=document.createElement('div');
+    d.className='bool-card';
+    const a=boolInputs[oi][0],b=boolInputs[oi][1];
+    const res=op.unary?op.fn(a):op.fn(a,b);
+    d.innerHTML=`<h3>${op.name} (${op.sym})</h3>
+      <div class="gate-io">
+        <div class="gate-btn ${a?'on':''}" onclick="event.stopPropagation();boolInputs[${oi}][0]=1-boolInputs[${oi}][0];renderBool()">A:${a}</div>
+        ${op.unary?'':`<div class="gate-btn ${b?'on':''}" onclick="event.stopPropagation();boolInputs[${oi}][1]=1-boolInputs[${oi}][1];renderBool()">B:${b}</div>`}
+        <span style="color:#8b949e">&rarr;</span>
+        <div class="gate-btn ${res?'on':''}" style="cursor:default">${res}</div>
+      </div>`;
+    g.appendChild(d);
+  });
+}
+
+// Init
+renderTwos();renderFloat();updateEndian();renderBool();calcOverflow();
+</script>
+</body>
+</html>

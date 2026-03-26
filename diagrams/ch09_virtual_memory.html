@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 9: Virtual Memory - CS:APP</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh}.header{background:linear-gradient(135deg,#161b22,#1a1f2e);padding:24px 32px;border-bottom:1px solid #30363d}.header h1{font-size:1.6em;color:#58a6ff;margin-bottom:4px}.header p{color:#8b949e;font-size:.9em}.container{display:flex;min-height:calc(100vh - 80px)}.sidebar{width:260px;background:#161b22;border-right:1px solid #30363d;padding:16px 0;flex-shrink:0}.sidebar a{display:block;padding:10px 20px;color:#8b949e;text-decoration:none;font-size:.85em;border-left:3px solid transparent;transition:all .2s}.sidebar a:hover{color:#c9d1d9;background:#1c2129}.sidebar a.active{color:#58a6ff;border-left-color:#58a6ff;background:#1c2129}.content{flex:1;padding:32px;max-width:1100px}.diagram{display:none}.diagram.active{display:block}.diagram h2{color:#58a6ff;margin-bottom:16px}.diagram p.desc{color:#8b949e;margin-bottom:24px;line-height:1.6}.card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin:16px 0}table{width:100%;border-collapse:collapse;margin:12px 0}th,td{padding:8px 12px;text-align:left;border:1px solid #30363d;font-size:.82em}th{background:#1c2129;color:#58a6ff}
+.flow-diagram{display:flex;align-items:center;gap:8px;margin:16px 0;flex-wrap:wrap;justify-content:center}
+.flow-box{background:#1c2129;border:2px solid #30363d;border-radius:10px;padding:14px 18px;text-align:center;min-width:100px;transition:all .3s;cursor:pointer}
+.flow-box:hover{border-color:#58a6ff;transform:translateY(-2px)}
+.flow-box .label{font-weight:600;font-size:.85em}.flow-box .sub{font-size:.7em;color:#8b949e;margin-top:2px}
+.flow-arrow{color:#58a6ff;font-size:1.3em;flex-shrink:0}
+.pt-grid{display:flex;flex-direction:column;gap:2px;margin:16px 0;max-width:700px}
+.pt-row{display:flex;gap:2px;align-items:center}
+.pt-cell{padding:8px 12px;text-align:center;font-size:.75em;font-family:monospace;border-radius:3px;min-width:50px;cursor:pointer;transition:all .2s}
+.pt-cell:hover{filter:brightness(1.3)}
+.pt-header{font-weight:600;min-width:60px;color:#8b949e;font-size:.72em;text-align:right;padding-right:8px}
+.addr-split{display:flex;margin:16px 0;border-radius:6px;overflow:hidden;font-family:monospace;text-align:center}
+.addr-split div{padding:10px 16px;font-size:.85em;font-weight:600}
+.heap-vis{display:flex;gap:2px;margin:16px 0;flex-wrap:wrap;align-items:flex-end}
+.heap-block{border-radius:4px;padding:8px;text-align:center;font-size:.7em;font-weight:600;cursor:pointer;transition:all .2s;min-width:60px}
+.heap-block:hover{transform:translateY(-2px)}
+input[type=text]{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 12px;color:#e6edf3;font-family:monospace;width:160px}
+button{background:#238636;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-size:.85em;margin:2px}button:hover{background:#2ea043}
+.btn-red{background:#da3633}.btn-red:hover{background:#f85149}
+.result{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;margin-top:12px;font-family:monospace;font-size:.82em;color:#7ee787;white-space:pre-wrap}
+.tabs{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}.tab{padding:8px 16px;border-radius:6px;background:#1c2129;border:1px solid #30363d;color:#8b949e;cursor:pointer;font-size:.82em}.tab:hover{color:#c9d1d9}.tab.active{background:#58a6ff22;color:#58a6ff;border-color:#58a6ff}.tab-content{display:none}.tab-content.active{display:block}
+@media(max-width:768px){.container{flex-direction:column}.sidebar{width:100%;display:flex;overflow-x:auto}.sidebar a{white-space:nowrap}.content{padding:16px}}
+</style>
+</head>
+<body>
+<div class="header"><h1>Chapter 9: Virtual Memory</h1><p>CS:APP - Computer Systems: A Programmer's Perspective, 2nd Edition</p></div>
+<div class="container">
+<nav class="sidebar">
+  <a href="#" class="active" onclick="showD('addressing',this)">Address Translation</a>
+  <a href="#" onclick="showD('pagetable',this)">Page Tables</a>
+  <a href="#" onclick="showD('pagefault',this)">Page Faults</a>
+  <a href="#" onclick="showD('tlb',this)">TLB</a>
+  <a href="#" onclick="showD('multilevel',this)">Multi-Level Page Tables</a>
+  <a href="#" onclick="showD('mmap',this)">Memory Mapping</a>
+  <a href="#" onclick="showD('malloc',this)">Dynamic Allocation</a>
+  <a href="#" onclick="showD('bugs',this)">Memory Bugs</a>
+</nav>
+<main class="content">
+
+  <div id="addressing" class="diagram active">
+    <h2>Virtual Address Translation</h2>
+    <p class="desc">The MMU translates virtual addresses to physical addresses using the page table.</p>
+    <div class="flow-diagram">
+      <div class="flow-box" style="border-color:#58a6ff"><div class="label" style="color:#58a6ff">CPU</div><div class="sub">Virtual Address (VA)</div></div>
+      <div class="flow-arrow">&#10132;</div>
+      <div class="flow-box" style="border-color:#ffa657"><div class="label" style="color:#ffa657">MMU</div><div class="sub">Page Table Lookup</div></div>
+      <div class="flow-arrow">&#10132;</div>
+      <div class="flow-box" style="border-color:#7ee787"><div class="label" style="color:#7ee787">Physical Address (PA)</div><div class="sub">To Cache/Memory</div></div>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">Address Decomposition</h3>
+      <p style="color:#8b949e;font-size:.82em;margin-bottom:8px"><strong>Virtual Address:</strong></p>
+      <div class="addr-split">
+        <div style="background:#c678dd;flex:3">VPN (Virtual Page Number)</div>
+        <div style="background:#7ee787;color:#0d1117;flex:1">VPO (Virtual Page Offset)</div>
+      </div>
+      <p style="color:#8b949e;font-size:.82em;margin-bottom:8px;margin-top:12px"><strong>Physical Address:</strong></p>
+      <div class="addr-split">
+        <div style="background:#58a6ff;flex:3">PPN (Physical Page Number)</div>
+        <div style="background:#7ee787;color:#0d1117;flex:1">PPO = VPO</div>
+      </div>
+      <p style="color:#8b949e;font-size:.75em;margin-top:8px">The VPO and PPO are identical because the offset within a page doesn't change. Only the page number is translated. With 4KB pages: VPO = PPO = 12 bits.</p>
+    </div>
+  </div>
+
+  <div id="pagetable" class="diagram">
+    <h2>Page Table</h2>
+    <p class="desc">An array of Page Table Entries (PTEs) indexed by the Virtual Page Number. Click entries to see details.</p>
+    <div class="pt-grid">
+      <div class="pt-row"><div class="pt-header">VPN</div><div class="pt-cell" style="background:#30363d;font-weight:600;color:#58a6ff">Valid</div><div class="pt-cell" style="background:#30363d;font-weight:600;color:#58a6ff">Dirty</div><div class="pt-cell" style="background:#30363d;font-weight:600;color:#58a6ff">Perm</div><div class="pt-cell" style="background:#30363d;font-weight:600;color:#58a6ff;flex:2">PPN / Disk Addr</div></div>
+      <div class="pt-row" onclick="showPTE(0)"><div class="pt-header">0</div><div class="pt-cell" style="background:#23863622;color:#7ee787">1</div><div class="pt-cell" style="background:#1c2129">0</div><div class="pt-cell" style="background:#1c2129">RW</div><div class="pt-cell" style="background:#58a6ff22;flex:2">PPN: 0x0A3</div></div>
+      <div class="pt-row" onclick="showPTE(1)"><div class="pt-header">1</div><div class="pt-cell" style="background:#23863622;color:#7ee787">1</div><div class="pt-cell" style="background:#1c2129">1</div><div class="pt-cell" style="background:#1c2129">RW</div><div class="pt-cell" style="background:#58a6ff22;flex:2">PPN: 0x1F0</div></div>
+      <div class="pt-row" onclick="showPTE(2)"><div class="pt-header">2</div><div class="pt-cell" style="background:#da363322;color:#e06c75">0</div><div class="pt-cell" style="background:#1c2129">-</div><div class="pt-cell" style="background:#1c2129">-</div><div class="pt-cell" style="background:#d19a6622;flex:2">Disk: 0x7F20</div></div>
+      <div class="pt-row" onclick="showPTE(3)"><div class="pt-header">3</div><div class="pt-cell" style="background:#23863622;color:#7ee787">1</div><div class="pt-cell" style="background:#1c2129">0</div><div class="pt-cell" style="background:#1c2129">R-</div><div class="pt-cell" style="background:#58a6ff22;flex:2">PPN: 0x052</div></div>
+      <div class="pt-row" onclick="showPTE(4)"><div class="pt-header">4</div><div class="pt-cell" style="background:#da363322;color:#e06c75">0</div><div class="pt-cell" style="background:#1c2129">-</div><div class="pt-cell" style="background:#1c2129">-</div><div class="pt-cell" style="background:#30363d;flex:2">null (unallocated)</div></div>
+    </div>
+    <div class="result" id="pte-detail">Click a page table entry above for details.</div>
+  </div>
+
+  <div id="pagefault" class="diagram">
+    <h2>Page Hit vs Page Fault</h2>
+    <p class="desc">What happens when the CPU accesses a virtual address.</p>
+    <div class="tabs">
+      <div class="tab active" onclick="showTab('hit',this)">Page Hit</div>
+      <div class="tab" onclick="showTab('fault',this)">Page Fault</div>
+    </div>
+    <div id="hit" class="tab-content active">
+      <div class="card">
+        <h3 style="color:#7ee787;font-size:.9em;margin-bottom:12px">Page Hit (PTE valid bit = 1)</h3>
+        <div class="flow-diagram">
+          <div class="flow-box" style="border-color:#58a6ff"><div class="label">1. CPU</div><div class="sub">sends VA to MMU</div></div>
+          <div class="flow-arrow">&#10132;</div>
+          <div class="flow-box" style="border-color:#ffa657"><div class="label">2. MMU</div><div class="sub">looks up PTE</div></div>
+          <div class="flow-arrow">&#10132;</div>
+          <div class="flow-box" style="border-color:#7ee787"><div class="label">3. Valid!</div><div class="sub">PTE has PPN</div></div>
+          <div class="flow-arrow">&#10132;</div>
+          <div class="flow-box" style="border-color:#7ee787"><div class="label">4. Memory</div><div class="sub">access PA</div></div>
+        </div>
+        <p style="color:#8b949e;font-size:.82em">Fast path: address translation happens entirely in hardware (MMU). With TLB, can be as fast as ~1 cycle.</p>
+      </div>
+    </div>
+    <div id="fault" class="tab-content">
+      <div class="card">
+        <h3 style="color:#e06c75;font-size:.9em;margin-bottom:12px">Page Fault (PTE valid bit = 0, but page exists on disk)</h3>
+        <div class="flow-diagram">
+          <div class="flow-box" style="border-color:#58a6ff"><div class="label">1. CPU</div><div class="sub">sends VA</div></div>
+          <div class="flow-arrow">&#10132;</div>
+          <div class="flow-box" style="border-color:#e06c75"><div class="label">2. Fault!</div><div class="sub">valid=0</div></div>
+          <div class="flow-arrow">&#10132;</div>
+          <div class="flow-box" style="border-color:#ffa657"><div class="label">3. Handler</div><div class="sub">select victim</div></div>
+          <div class="flow-arrow">&#10132;</div>
+          <div class="flow-box" style="border-color:#d19a66"><div class="label">4. Swap In</div><div class="sub">disk to DRAM</div></div>
+          <div class="flow-arrow">&#10132;</div>
+          <div class="flow-box" style="border-color:#7ee787"><div class="label">5. Update PTE</div><div class="sub">valid=1</div></div>
+          <div class="flow-arrow">&#10132;</div>
+          <div class="flow-box" style="border-color:#58a6ff"><div class="label">6. Restart</div><div class="sub">re-execute instr</div></div>
+        </div>
+        <p style="color:#8b949e;font-size:.82em">Slow path: triggers exception, OS handler swaps page from disk (~10ms). Extremely expensive compared to a hit.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="tlb" class="diagram">
+    <h2>TLB (Translation Lookaside Buffer)</h2>
+    <p class="desc">A small, fast cache of recently used page table entries, inside the MMU.</p>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">TLB Address Decomposition</h3>
+      <p style="color:#8b949e;font-size:.82em;margin-bottom:8px">The VPN is split into TLB tag and TLB index:</p>
+      <div class="addr-split">
+        <div style="background:#c678dd;flex:2">TLBT (TLB Tag)</div>
+        <div style="background:#d19a66;flex:1">TLBI (TLB Index)</div>
+        <div style="background:#7ee787;color:#0d1117;flex:1">VPO</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:8px">TLB Hit vs Miss</h3>
+      <table>
+        <tr><th></th><th style="color:#7ee787">TLB Hit</th><th style="color:#e06c75">TLB Miss</th></tr>
+        <tr><td>Speed</td><td>~1 cycle (like cache hit)</td><td>~10-100 cycles (page table walk)</td></tr>
+        <tr><td>Action</td><td>Return PPN from TLB entry</td><td>Fetch PTE from page table in memory, update TLB</td></tr>
+        <tr><td>Hit rate</td><td colspan="2">Typically 99%+ due to locality</td></tr>
+      </table>
+      <p style="color:#8b949e;font-size:.8em;margin-top:8px">Typical TLB: 64-256 entries, fully associative or 4-way. Covers 64*4KB = 256KB - 1MB of address space.</p>
+    </div>
+  </div>
+
+  <div id="multilevel" class="diagram">
+    <h2>Multi-Level Page Tables</h2>
+    <p class="desc">Saves memory by only allocating page table entries for used regions of the address space.</p>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">Why Multi-Level?</h3>
+      <p style="color:#8b949e;font-size:.82em;line-height:1.6">A single-level page table for 32-bit addresses with 4KB pages needs 2<sup>20</sup> = 1M entries = 4MB per process. For 64-bit addresses: impossibly large. Multi-level tables only allocate lower-level tables for memory regions actually in use.</p>
+      <div class="flow-diagram" style="margin-top:16px">
+        <div class="flow-box" style="border-color:#c678dd"><div class="label" style="color:#c678dd">Level 1 PT</div><div class="sub">1024 entries<br>Always in memory</div></div>
+        <div class="flow-arrow">&#10132;</div>
+        <div class="flow-box" style="border-color:#58a6ff"><div class="label" style="color:#58a6ff">Level 2 PT</div><div class="sub">1024 entries each<br>Only if needed</div></div>
+        <div class="flow-arrow">&#10132;</div>
+        <div class="flow-box" style="border-color:#7ee787"><div class="label" style="color:#7ee787">PPN</div><div class="sub">Physical page</div></div>
+      </div>
+      <p style="color:#8b949e;font-size:.8em;margin-top:8px"><strong>Intel Core i7 uses 4 levels:</strong> PML4 (L1) &rarr; PDP (L2) &rarr; PD (L3) &rarr; PT (L4) &rarr; Physical Page. Each level indexes 9 bits of the 48-bit virtual address.</p>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:8px">Core i7 Address Translation (48-bit VA, 52-bit PA)</h3>
+      <div class="addr-split">
+        <div style="background:#e06c75;flex:1;font-size:.7em">PML4<br>9 bits</div>
+        <div style="background:#d19a66;flex:1;font-size:.7em">PDP<br>9 bits</div>
+        <div style="background:#e5c07b;flex:1;font-size:.7em">PD<br>9 bits</div>
+        <div style="background:#98c379;flex:1;font-size:.7em">PT<br>9 bits</div>
+        <div style="background:#7ee787;color:#0d1117;flex:1;font-size:.7em">Offset<br>12 bits</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="mmap" class="diagram">
+    <h2>Memory Mapping</h2>
+    <p class="desc">How the OS maps virtual memory areas to disk objects.</p>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">Types of Mapped Objects</h3>
+      <table>
+        <tr><th>Type</th><th>Description</th><th>Examples</th></tr>
+        <tr><td style="color:#7ee787">Shared Object</td><td>Changes visible to all processes mapping the same object</td><td>Shared libraries (.so), shared memory</td></tr>
+        <tr><td style="color:#58a6ff">Private Copy-on-Write</td><td>Private copy created only when process writes to page</td><td>Program code/data after fork()</td></tr>
+        <tr><td style="color:#d19a66">Anonymous</td><td>Not backed by any file; zero-filled demand pages</td><td>Heap, stack, BSS</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:8px">fork() and execve() with VM</h3>
+      <p style="color:#8b949e;font-size:.82em;line-height:1.6">
+        <strong style="color:#7ee787">fork():</strong> Creates new page tables for child pointing to same physical pages. Pages marked copy-on-write. Only copied when either process writes.<br><br>
+        <strong style="color:#58a6ff">execve():</strong> Deletes existing VM areas, creates new ones for the new program's .text, .data, .bss, stack. Maps .text and .data from executable file. Does NOT actually load pages until accessed (demand paging).
+      </p>
+    </div>
+  </div>
+
+  <div id="malloc" class="diagram">
+    <h2>Dynamic Memory Allocation</h2>
+    <p class="desc">Interactive heap visualization using implicit free lists. Click to allocate and free blocks.</p>
+    <div class="card">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+        <button onclick="heapMalloc()">malloc()</button>
+        <button class="btn-red" onclick="heapFree()">free()</button>
+        <button onclick="heapReset()" style="background:#30363d">Reset</button>
+        <span style="font-size:.8em;color:#8b949e">Click free() then click an allocated block to free it</span>
+      </div>
+      <div class="heap-vis" id="heap-vis"></div>
+      <div class="result" id="heap-log"></div>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:8px">Implicit Free List Block Format</h3>
+      <div class="addr-split">
+        <div style="background:#c678dd;flex:4;font-size:.8em">Header: block size | allocated bit</div>
+        <div style="background:#58a6ff;flex:6;font-size:.8em">Payload (if allocated) / Free space</div>
+        <div style="background:#c678dd;flex:4;font-size:.8em">Footer (for coalescing)</div>
+      </div>
+      <p style="color:#8b949e;font-size:.8em;margin-top:8px">The header stores block size (including header+footer) with the low bit indicating allocated (1) or free (0). Coalescing merges adjacent free blocks. Boundary tags (footers) enable coalescing with the previous block in O(1).</p>
+    </div>
+  </div>
+
+  <div id="bugs" class="diagram">
+    <h2>Common Memory Bugs in C</h2>
+    <p class="desc">Frequent sources of memory-related errors that every C programmer should know.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:16px 0">
+      <div class="card" style="border-color:#e06c7544">
+        <h3 style="color:#e06c75;font-size:.85em;margin-bottom:8px">1. Dereferencing Bad Pointers</h3>
+        <div style="background:#0d1117;padding:8px;border-radius:4px;font-family:monospace;font-size:.75em;color:#c9d1d9">scanf("%d", val); <span style="color:#e06c75">// Missing &</span><br>scanf("%d", &val); <span style="color:#7ee787">// Correct</span></div>
+      </div>
+      <div class="card" style="border-color:#e06c7544">
+        <h3 style="color:#e06c75;font-size:.85em;margin-bottom:8px">2. Reading Uninitialized Memory</h3>
+        <div style="background:#0d1117;padding:8px;border-radius:4px;font-family:monospace;font-size:.75em;color:#c9d1d9">int *p = malloc(n*sizeof(int));<br><span style="color:#e06c75">// p[i] is NOT zero!</span><br>Use calloc() or memset.</div>
+      </div>
+      <div class="card" style="border-color:#e06c7544">
+        <h3 style="color:#e06c75;font-size:.85em;margin-bottom:8px">3. Stack Buffer Overflow</h3>
+        <div style="background:#0d1117;padding:8px;border-radius:4px;font-family:monospace;font-size:.75em;color:#c9d1d9">char buf[64];<br>gets(buf); <span style="color:#e06c75">// No bounds check!</span></div>
+      </div>
+      <div class="card" style="border-color:#e06c7544">
+        <h3 style="color:#e06c75;font-size:.85em;margin-bottom:8px">4. Off-by-One Errors</h3>
+        <div style="background:#0d1117;padding:8px;border-radius:4px;font-family:monospace;font-size:.75em;color:#c9d1d9">int a[n];<br>for(i=0; i<span style="color:#e06c75"><=</span>n; i++) <span style="color:#e06c75">// writes a[n]!</span></div>
+      </div>
+      <div class="card" style="border-color:#e06c7544">
+        <h3 style="color:#e06c75;font-size:.85em;margin-bottom:8px">5. Referencing Freed Blocks</h3>
+        <div style="background:#0d1117;padding:8px;border-radius:4px;font-family:monospace;font-size:.75em;color:#c9d1d9">free(p);<br>val = *p; <span style="color:#e06c75">// Dangling pointer!</span></div>
+      </div>
+      <div class="card" style="border-color:#e06c7544">
+        <h3 style="color:#e06c75;font-size:.85em;margin-bottom:8px">6. Memory Leaks</h3>
+        <div style="background:#0d1117;padding:8px;border-radius:4px;font-family:monospace;font-size:.75em;color:#c9d1d9">p = malloc(size);<br>p = malloc(size2); <span style="color:#e06c75">// First block leaked!</span></div>
+      </div>
+    </div>
+  </div>
+
+</main></div>
+<script>
+function showD(id,el){document.querySelectorAll('.diagram').forEach(d=>d.classList.remove('active'));document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));document.getElementById(id).classList.add('active');el.classList.add('active')}
+function showTab(id,el){el.parentElement.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');const p=el.closest('.diagram');p.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));document.getElementById(id).classList.add('active')}
+
+const pteData=[
+  'VPN 0: Valid=1, PPN=0x0A3. Page is cached in DRAM. Permissions: Read/Write. Clean (not modified).',
+  'VPN 1: Valid=1, PPN=0x1F0. Page is cached in DRAM. Permissions: Read/Write. Dirty (has been written to - must write back to disk if evicted).',
+  'VPN 2: Valid=0, Disk address=0x7F20. Page is NOT in DRAM (on disk). Accessing this causes a PAGE FAULT.',
+  'VPN 3: Valid=1, PPN=0x052. Page is cached in DRAM. Permissions: Read-only. Writing causes a protection fault.',
+  'VPN 4: Valid=0, null. This virtual page has not been allocated. Accessing causes a SEGMENTATION FAULT.'
+];
+function showPTE(i){document.getElementById('pte-detail').textContent=pteData[i]}
+
+// Heap simulator
+let heap=[{size:4,alloc:false},{size:3,alloc:false},{size:2,alloc:false},{size:5,alloc:false}];
+let heapLog=[];let freeMode=false;
+function renderHeap(){
+  const v=document.getElementById('heap-vis');
+  v.innerHTML='';
+  heap.forEach((b,i)=>{
+    const d=document.createElement('div');
+    d.className='heap-block';
+    d.style.width=(b.size*40)+'px';
+    d.style.height='60px';
+    d.style.display='flex';d.style.alignItems='center';d.style.justifyContent='center';
+    if(b.alloc){d.style.background='#23863644';d.style.border='2px solid #238636';d.textContent=`Alloc (${b.size})`;d.style.color='#7ee787'}
+    else{d.style.background='#30363d44';d.style.border='2px dashed #30363d';d.textContent=`Free (${b.size})`;d.style.color='#8b949e'}
+    d.onclick=()=>{if(freeMode&&b.alloc){b.alloc=false;heapLog.push(`free block ${i} (size ${b.size})`);coalesce();freeMode=false;renderHeap();updateHL()}};
+    v.appendChild(d);
+  });
+}
+function coalesce(){
+  let i=0;while(i<heap.length-1){if(!heap[i].alloc&&!heap[i+1].alloc){heap[i].size+=heap[i+1].size;heap.splice(i+1,1);heapLog.push('  coalesced adjacent free blocks')}else i++}
+}
+function heapMalloc(){
+  freeMode=false;
+  const sizes=[2,3,4];const s=sizes[Math.floor(Math.random()*sizes.length)];
+  for(let i=0;i<heap.length;i++){
+    if(!heap[i].alloc&&heap[i].size>=s){
+      if(heap[i].size>s){heap.splice(i+1,0,{size:heap[i].size-s,alloc:false});heap[i].size=s}
+      heap[i].alloc=true;heapLog.push(`malloc(${s}) -> block ${i}`);renderHeap();updateHL();return;
+    }
+  }
+  heapLog.push(`malloc(${s}) -> FAILED (no fit)`);updateHL();
+}
+function heapFree(){freeMode=true;heapLog.push('Click an allocated block to free it...');updateHL()}
+function heapReset(){heap=[{size:4,alloc:false},{size:3,alloc:false},{size:2,alloc:false},{size:5,alloc:false}];heapLog=[];freeMode=false;renderHeap();updateHL()}
+function updateHL(){document.getElementById('heap-log').innerHTML=heapLog.slice(-8).join('\n')}
+renderHeap();
+</script>
+</body>
+</html>

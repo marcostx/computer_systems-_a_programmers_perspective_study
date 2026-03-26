@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 7: Linking - CS:APP Study Diagrams</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0d1117; color: #c9d1d9; display: flex; min-height: 100vh; }
+.sidebar { width: 260px; background: #161b22; border-right: 1px solid #30363d; padding: 20px 0; position: fixed; height: 100vh; overflow-y: auto; }
+.sidebar h2 { padding: 0 20px 15px; color: #58a6ff; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #30363d; margin-bottom: 10px; }
+.sidebar a { display: block; padding: 10px 20px; color: #8b949e; text-decoration: none; font-size: 14px; border-left: 3px solid transparent; transition: all 0.2s; }
+.sidebar a:hover, .sidebar a.active { color: #c9d1d9; background: #1c2128; border-left-color: #58a6ff; }
+.main { margin-left: 260px; flex: 1; padding: 30px 40px; }
+.main h1 { color: #58a6ff; font-size: 28px; margin-bottom: 5px; }
+.main .subtitle { color: #8b949e; margin-bottom: 25px; font-size: 15px; }
+.tab-container { display: none; }
+.tab-container.active { display: block; }
+.tab-container h2 { color: #e6edf3; font-size: 22px; margin-bottom: 15px; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+.diagram-box { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 25px; margin-bottom: 20px; }
+.flow-row { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 15px 0; }
+.flow-item { background: #1c2128; border: 1px solid #30363d; border-radius: 6px; padding: 12px 18px; text-align: center; min-width: 100px; cursor: pointer; transition: all 0.2s; position: relative; }
+.flow-item:hover { border-color: #58a6ff; background: #1a2332; }
+.flow-item.file { border-color: #3fb950; color: #3fb950; }
+.flow-item.process { border-color: #d29922; color: #d29922; }
+.flow-item.output { border-color: #f85149; color: #f85149; }
+.flow-item.exec { border-color: #bc8cff; color: #bc8cff; }
+.arrow { color: #484f58; font-size: 22px; user-select: none; }
+.tooltip { display: none; position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); background: #30363d; color: #e6edf3; padding: 10px 14px; border-radius: 6px; font-size: 13px; white-space: nowrap; z-index: 10; border: 1px solid #484f58; }
+.tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: #30363d; }
+.flow-item:hover .tooltip { display: block; }
+.info-panel { background: #1c2128; border: 1px solid #30363d; border-radius: 6px; padding: 15px 20px; margin-top: 15px; color: #8b949e; font-size: 14px; line-height: 1.7; }
+.info-panel strong { color: #e6edf3; }
+.info-panel code { background: #2d333b; padding: 2px 6px; border-radius: 3px; color: #f0883e; font-size: 13px; }
+/* ELF sections */
+.elf-container { display: flex; flex-direction: column; gap: 0; max-width: 500px; margin: 0 auto; }
+.elf-section { border: 1px solid #30363d; padding: 12px 18px; text-align: center; cursor: pointer; transition: all 0.2s; font-size: 14px; font-weight: 600; }
+.elf-section:first-child { border-radius: 8px 8px 0 0; }
+.elf-section:last-child { border-radius: 0 0 8px 8px; }
+.elf-section:hover, .elf-section.selected { transform: scale(1.02); z-index: 1; position: relative; }
+.elf-section.s-header { background: #1a2332; border-color: #58a6ff; color: #58a6ff; }
+.elf-section.s-text { background: #1a2b1a; border-color: #3fb950; color: #3fb950; }
+.elf-section.s-rodata { background: #1a2b1a; border-color: #3fb950; color: #56d364; }
+.elf-section.s-data { background: #2b1a1a; border-color: #f85149; color: #f85149; }
+.elf-section.s-bss { background: #2b1a1a; border-color: #f85149; color: #f47067; }
+.elf-section.s-symtab { background: #2b2a1a; border-color: #d29922; color: #d29922; }
+.elf-section.s-rel { background: #261a2b; border-color: #bc8cff; color: #bc8cff; }
+.elf-section.s-debug { background: #1a2b2b; border-color: #39d2c0; color: #39d2c0; }
+.elf-section.s-strtab { background: #2b2a1a; border-color: #d29922; color: #e3b341; }
+.elf-section.s-shdr { background: #1a2332; border-color: #58a6ff; color: #79c0ff; }
+.elf-desc { background: #1c2128; border: 1px solid #30363d; border-radius: 6px; padding: 18px; margin-top: 20px; min-height: 80px; font-size: 14px; line-height: 1.7; color: #8b949e; }
+.elf-desc .name { font-weight: 700; color: #e6edf3; font-size: 16px; margin-bottom: 5px; }
+/* Symbol tables */
+.sym-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.sym-table th { background: #1c2128; color: #58a6ff; padding: 10px 14px; text-align: left; font-size: 13px; border-bottom: 2px solid #30363d; }
+.sym-table td { padding: 10px 14px; border-bottom: 1px solid #21262d; font-size: 14px; }
+.sym-table tr:hover td { background: #1c2128; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+.badge.strong { background: #1a2b1a; color: #3fb950; border: 1px solid #3fb950; }
+.badge.weak { background: #2b2a1a; color: #d29922; border: 1px solid #d29922; }
+.rule-box { background: #1c2128; border-left: 3px solid #58a6ff; padding: 12px 18px; margin: 8px 0; border-radius: 0 6px 6px 0; font-size: 14px; }
+.rule-box.error { border-left-color: #f85149; }
+.rule-box.ok { border-left-color: #3fb950; }
+/* Relocation */
+.reloc-container { display: flex; gap: 30px; justify-content: center; flex-wrap: wrap; }
+.reloc-block { flex: 1; min-width: 280px; max-width: 400px; }
+.reloc-block h3 { color: #8b949e; text-align: center; margin-bottom: 10px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+.mem-region { border: 1px solid #30363d; border-radius: 6px; overflow: hidden; }
+.mem-row { display: flex; border-bottom: 1px solid #21262d; font-size: 13px; }
+.mem-row:last-child { border-bottom: none; }
+.mem-addr { width: 100px; padding: 8px 10px; background: #1c2128; color: #8b949e; font-family: monospace; text-align: right; border-right: 1px solid #21262d; }
+.mem-content { flex: 1; padding: 8px 10px; font-family: monospace; }
+.mem-content.code { color: #3fb950; }
+.mem-content.data { color: #f85149; }
+.mem-content.hdr { color: #58a6ff; }
+.highlight-arrow { text-align: center; color: #d29922; font-size: 30px; margin: 15px 0; }
+/* Dynamic linking */
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; }
+.compare-box { background: #1c2128; border: 1px solid #30363d; border-radius: 8px; padding: 18px; }
+.compare-box h3 { margin-bottom: 10px; font-size: 16px; }
+.compare-box.static h3 { color: #d29922; }
+.compare-box.dynamic h3 { color: #3fb950; }
+.compare-box ul { list-style: none; padding: 0; }
+.compare-box li { padding: 5px 0; font-size: 14px; color: #8b949e; }
+.compare-box li::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 8px; }
+.compare-box.static li::before { background: #d29922; }
+.compare-box.dynamic li::before { background: #3fb950; }
+.plt-flow { margin-top: 20px; }
+.plt-step { display: flex; align-items: center; gap: 15px; margin: 10px 0; }
+.plt-num { width: 30px; height: 30px; border-radius: 50%; background: #58a6ff; color: #0d1117; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+.plt-text { font-size: 14px; color: #c9d1d9; }
+.plt-text code { background: #2d333b; padding: 2px 6px; border-radius: 3px; color: #f0883e; }
+@media (max-width: 900px) { .sidebar { display: none; } .main { margin-left: 0; } .compare-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <h2>Ch 7: Linking</h2>
+  <a href="#" class="active" onclick="showTab('static-linking', this)">Static Linking Process</a>
+  <a href="#" onclick="showTab('elf-format', this)">ELF Object File Format</a>
+  <a href="#" onclick="showTab('symbol-resolution', this)">Symbol Resolution</a>
+  <a href="#" onclick="showTab('static-libraries', this)">Static Libraries</a>
+  <a href="#" onclick="showTab('relocation', this)">Relocation</a>
+  <a href="#" onclick="showTab('dynamic-linking', this)">Dynamic Linking</a>
+</nav>
+<div class="main">
+  <h1>Chapter 7: Linking</h1>
+  <p class="subtitle">CS:APP - Computer Systems: A Programmer's Perspective</p>
+
+  <!-- 1. Static Linking Process -->
+  <div id="static-linking" class="tab-container active">
+    <h2>Static Linking Process</h2>
+    <div class="diagram-box">
+      <p style="color:#8b949e;margin-bottom:15px;font-size:14px;">Hover over each stage to learn more.</p>
+      <div class="flow-row">
+        <div class="flow-item file">main.c<span class="tooltip">C source file with main()</span></div>
+        <div class="flow-item file">sum.c<span class="tooltip">C source file with helper functions</span></div>
+      </div>
+      <div style="text-align:center;"><span class="arrow">&#9660;</span> <span style="color:#8b949e;font-size:13px;">Preprocessor (cpp) + Compiler (cc1) + Assembler (as)</span></div>
+      <div class="flow-row">
+        <div class="flow-item process">Translators<span class="tooltip">cpp -> cc1 -> as pipeline: preprocess, compile to assembly, assemble to machine code</span></div>
+      </div>
+      <div style="text-align:center;"><span class="arrow">&#9660;</span></div>
+      <div class="flow-row">
+        <div class="flow-item output">main.o<span class="tooltip">Relocatable object file - contains code + data with unresolved references</span></div>
+        <div class="flow-item output">sum.o<span class="tooltip">Relocatable object file - contains code + data with unresolved references</span></div>
+      </div>
+      <div style="text-align:center;"><span class="arrow">&#9660;</span></div>
+      <div class="flow-row">
+        <div class="flow-item process" style="min-width:300px;">
+          Linker (ld)
+          <span class="tooltip">Step 1: Symbol Resolution &mdash; Step 2: Relocation</span>
+        </div>
+      </div>
+      <div style="text-align:center;"><span class="arrow">&#9660;</span></div>
+      <div class="flow-row">
+        <div class="flow-item exec">prog (executable)<span class="tooltip">Fully linked executable ready to load into memory and run</span></div>
+      </div>
+    </div>
+    <div class="info-panel">
+      <strong>Two main tasks of the linker:</strong><br>
+      1. <strong>Symbol Resolution</strong> &mdash; Associate each symbol reference with exactly one symbol definition from the symbol tables of the input object files.<br>
+      2. <strong>Relocation</strong> &mdash; Merge separate code/data sections and relocate symbols from relative offsets to final absolute memory addresses.
+    </div>
+  </div>
+
+  <!-- 2. ELF Object File Format -->
+  <div id="elf-format" class="tab-container">
+    <h2>ELF Object File Format</h2>
+    <div class="diagram-box" style="display:flex;gap:30px;flex-wrap:wrap;">
+      <div style="flex:0 0 auto;">
+        <p style="color:#8b949e;font-size:13px;margin-bottom:10px;">Click a section to see details</p>
+        <div class="elf-container" id="elfContainer">
+          <div class="elf-section s-header" onclick="showElf(0)">ELF Header</div>
+          <div class="elf-section s-text" onclick="showElf(1)">.text</div>
+          <div class="elf-section s-rodata" onclick="showElf(2)">.rodata</div>
+          <div class="elf-section s-data" onclick="showElf(3)">.data</div>
+          <div class="elf-section s-bss" onclick="showElf(4)">.bss</div>
+          <div class="elf-section s-symtab" onclick="showElf(5)">.symtab</div>
+          <div class="elf-section s-rel" onclick="showElf(6)">.rel.text</div>
+          <div class="elf-section s-rel" onclick="showElf(7)">.rel.data</div>
+          <div class="elf-section s-debug" onclick="showElf(8)">.debug</div>
+          <div class="elf-section s-strtab" onclick="showElf(9)">.strtab</div>
+          <div class="elf-section s-shdr" onclick="showElf(10)">Section Header Table</div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:280px;">
+        <div class="elf-desc" id="elfDesc">
+          <div class="name">ELF Header</div>
+          Contains the magic number (<code>0x7f ELF</code>), word size (32/64-bit), byte ordering, ELF type (relocatable, executable, shared), machine type, entry point address, and offsets to the section header table.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Symbol Resolution -->
+  <div id="symbol-resolution" class="tab-container">
+    <h2>Symbol Resolution</h2>
+    <div class="diagram-box">
+      <h3 style="color:#e6edf3;margin-bottom:12px;">Symbol Types</h3>
+      <table class="sym-table">
+        <tr><th>Symbol</th><th>Strength</th><th>Examples</th></tr>
+        <tr><td>Functions</td><td><span class="badge strong">Strong</span></td><td><code>int main() { ... }</code></td></tr>
+        <tr><td>Initialized globals</td><td><span class="badge strong">Strong</span></td><td><code>int x = 10;</code></td></tr>
+        <tr><td>Uninitialized globals</td><td><span class="badge weak">Weak</span></td><td><code>int x;</code></td></tr>
+      </table>
+    </div>
+    <div class="diagram-box">
+      <h3 style="color:#e6edf3;margin-bottom:12px;">Resolution Rules</h3>
+      <div class="rule-box error">
+        <strong>Rule 1:</strong> Multiple strong symbols with the same name &rarr; <span style="color:#f85149;">Linker Error!</span>
+      </div>
+      <div class="rule-box ok">
+        <strong>Rule 2:</strong> One strong symbol + one or more weak symbols &rarr; <span style="color:#3fb950;">Choose the strong symbol</span>
+      </div>
+      <div class="rule-box" style="border-left-color:#d29922;">
+        <strong>Rule 3:</strong> Multiple weak symbols, no strong &rarr; <span style="color:#d29922;">Pick any one (arbitrary, dangerous!)</span>
+      </div>
+    </div>
+    <div class="info-panel">
+      <strong>Warning:</strong> Rule 2 and 3 can introduce subtle bugs. If <code>int x;</code> appears in one file and <code>double x = 3.14;</code> in another, the linker silently uses the strong definition. The weak reference may interpret the memory differently (type mismatch). Use <code>-fno-common</code> and <code>static</code> to avoid issues.
+    </div>
+  </div>
+
+  <!-- 4. Static Libraries -->
+  <div id="static-libraries" class="tab-container">
+    <h2>Static Libraries (.a Archives)</h2>
+    <div class="diagram-box">
+      <h3 style="color:#e6edf3;margin-bottom:15px;">Creating a Static Library</h3>
+      <div class="flow-row">
+        <div class="flow-item file">addvec.o<span class="tooltip">Object module: addvec function</span></div>
+        <div class="flow-item file">multvec.o<span class="tooltip">Object module: multvec function</span></div>
+      </div>
+      <div style="text-align:center;"><span class="arrow">&#9660;</span> <span style="color:#8b949e;font-size:13px;">ar rcs libvector.a addvec.o multvec.o</span></div>
+      <div class="flow-row">
+        <div class="flow-item process" style="min-width:250px;">libvector.a (archive)<span class="tooltip">Collection of .o files with an index for quick lookup</span></div>
+      </div>
+    </div>
+    <div class="diagram-box">
+      <h3 style="color:#e6edf3;margin-bottom:15px;">Linker Algorithm (Left-to-Right Scan)</h3>
+      <div class="info-panel" style="margin-top:0;">
+        The linker maintains three sets:<br>
+        &bull; <strong style="color:#3fb950;">E</strong> = set of relocatable object files to be merged<br>
+        &bull; <strong style="color:#58a6ff;">U</strong> = set of unresolved symbols<br>
+        &bull; <strong style="color:#d29922;">D</strong> = set of defined symbols<br><br>
+        For each input file <code>f</code> on the command line (left to right):<br>
+        1. If <code>f</code> is an <strong>.o file</strong>: add to E, update U and D<br>
+        2. If <code>f</code> is an <strong>.a archive</strong>: scan members; only pull in modules that resolve symbols in U<br>
+        3. After all files processed: if U is non-empty &rarr; <span style="color:#f85149;">linker error</span>
+      </div>
+    </div>
+    <div class="info-panel">
+      <strong>Order matters!</strong> <code>gcc main.o -lvector -lm</code> works, but <code>gcc -lvector -lm main.o</code> may fail. Libraries should come <em>after</em> the object files that reference them. For circular dependencies, repeat: <code>gcc main.o -lfoo -lbar -lfoo</code>.
+    </div>
+  </div>
+
+  <!-- 5. Relocation -->
+  <div id="relocation" class="tab-container">
+    <h2>Relocation</h2>
+    <div class="diagram-box">
+      <div class="reloc-container">
+        <div class="reloc-block">
+          <h3>Before (Relocatable .o Files)</h3>
+          <div class="mem-region">
+            <div class="mem-row"><div class="mem-addr">0x000</div><div class="mem-content hdr">main.o .text</div></div>
+            <div class="mem-row"><div class="mem-addr">0x000</div><div class="mem-content code">call <span style="color:#f85149;">0x0</span> &lt;sum&gt;</div></div>
+            <div class="mem-row"><div class="mem-addr">0x000</div><div class="mem-content hdr">sum.o .text</div></div>
+            <div class="mem-row"><div class="mem-addr">0x000</div><div class="mem-content code">push %rbp</div></div>
+            <div class="mem-row"><div class="mem-addr">0x000</div><div class="mem-content hdr">main.o .data</div></div>
+            <div class="mem-row"><div class="mem-addr">0x000</div><div class="mem-content data">array[] = {1, 2}</div></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;font-size:36px;color:#d29922;">&#10132;</div>
+        <div class="reloc-block">
+          <h3>After (Executable)</h3>
+          <div class="mem-region">
+            <div class="mem-row"><div class="mem-addr" style="color:#58a6ff;">0x4004d0</div><div class="mem-content hdr">.text (merged)</div></div>
+            <div class="mem-row"><div class="mem-addr" style="color:#58a6ff;">0x4004d0</div><div class="mem-content code">call <span style="color:#3fb950;">0x4004e8</span> &lt;sum&gt;</div></div>
+            <div class="mem-row"><div class="mem-addr" style="color:#58a6ff;">0x4004e8</div><div class="mem-content code">push %rbp</div></div>
+            <div class="mem-row"><div class="mem-addr" style="color:#58a6ff;">0x601018</div><div class="mem-content hdr">.data (merged)</div></div>
+            <div class="mem-row"><div class="mem-addr" style="color:#58a6ff;">0x601018</div><div class="mem-content data">array[] = {1, 2}</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="diagram-box">
+      <h3 style="color:#e6edf3;margin-bottom:10px;">Two Relocation Steps</h3>
+      <div class="rule-box ok"><strong>Step 1 &mdash; Relocating sections:</strong> Merge all <code>.text</code> sections into one, all <code>.data</code> sections into one, etc. Assign runtime memory addresses.</div>
+      <div class="rule-box" style="border-left-color:#58a6ff;"><strong>Step 2 &mdash; Relocating symbol references:</strong> Use relocation entries (<code>.rel.text</code>, <code>.rel.data</code>) to patch every symbol reference to point to the correct runtime address.</div>
+    </div>
+    <div class="info-panel">
+      <strong>Relocation entry types (x86-64):</strong><br>
+      &bull; <code>R_X86_64_PC32</code> &mdash; PC-relative reference (32-bit), used for function calls and local data<br>
+      &bull; <code>R_X86_64_32</code> &mdash; Absolute reference (32-bit), used for absolute addressing
+    </div>
+  </div>
+
+  <!-- 6. Dynamic Linking -->
+  <div id="dynamic-linking" class="tab-container">
+    <h2>Dynamic Linking</h2>
+    <div class="diagram-box">
+      <h3 style="color:#e6edf3;margin-bottom:10px;">Static vs Dynamic Linking</h3>
+      <div class="compare-grid">
+        <div class="compare-box static">
+          <h3>Static Linking</h3>
+          <ul>
+            <li>Library code copied into executable</li>
+            <li>Larger executable size</li>
+            <li>No runtime dependencies</li>
+            <li>Must recompile to update library</li>
+            <li>Uses .a archive files</li>
+          </ul>
+        </div>
+        <div class="compare-box dynamic">
+          <h3>Dynamic Linking</h3>
+          <ul>
+            <li>Library loaded at runtime</li>
+            <li>Smaller executable size</li>
+            <li>Shared memory across processes</li>
+            <li>Library updates without recompile</li>
+            <li>Uses .so shared object files</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="diagram-box">
+      <h3 style="color:#e6edf3;margin-bottom:10px;">GOT and PLT: Lazy Binding</h3>
+      <div class="plt-flow">
+        <div class="plt-step"><div class="plt-num">1</div><div class="plt-text">Program calls <code>printf()</code> for the first time &rarr; jumps to <strong>PLT[n]</strong> (Procedure Linkage Table entry)</div></div>
+        <div class="plt-step"><div class="plt-num">2</div><div class="plt-text">PLT[n] does indirect jump through <code>GOT[n]</code> (Global Offset Table). Initially GOT[n] points back to PLT[n]+6</div></div>
+        <div class="plt-step"><div class="plt-num">3</div><div class="plt-text">PLT[n] pushes relocation index onto stack and jumps to <strong>PLT[0]</strong></div></div>
+        <div class="plt-step"><div class="plt-num">4</div><div class="plt-text">PLT[0] calls the <strong>dynamic linker</strong> (<code>ld-linux.so</code>), which resolves the symbol</div></div>
+        <div class="plt-step"><div class="plt-num">5</div><div class="plt-text">Dynamic linker patches <code>GOT[n]</code> with the real address of <code>printf()</code></div></div>
+        <div class="plt-step"><div class="plt-num">6</div><div class="plt-text">Subsequent calls to <code>printf()</code>: PLT[n] &rarr; GOT[n] &rarr; <strong>directly to printf</strong> (no linker involved)</div></div>
+      </div>
+    </div>
+    <div class="info-panel">
+      <strong>Key concepts:</strong><br>
+      &bull; <strong>GOT (Global Offset Table)</strong> &mdash; Data section array. Each entry holds the runtime address of a function/variable. Writable, updated by the dynamic linker.<br>
+      &bull; <strong>PLT (Procedure Linkage Table)</strong> &mdash; Code section stubs. Each entry is a small trampoline that jumps through the corresponding GOT entry.<br>
+      &bull; <strong>Lazy binding</strong> &mdash; Symbols are resolved on first use rather than at load time. Controlled by <code>LD_BIND_NOW</code> environment variable.
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(id, el) {
+  document.querySelectorAll('.tab-container').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (el) el.classList.add('active');
+}
+
+const elfData = [
+  { name: 'ELF Header', desc: 'Contains the magic number (0x7f ELF), word size (32/64-bit), byte ordering (little/big endian), ELF type (relocatable, executable, shared), machine type (x86-64), entry point address, and the offset to the section header table.' },
+  { name: '.text', desc: 'The machine code of the compiled program. This is the actual executable instructions generated by the compiler and assembler.' },
+  { name: '.rodata', desc: 'Read-only data such as string literals (e.g., format strings for printf) and jump tables for switch statements.' },
+  { name: '.data', desc: 'Initialized global and static C variables. Local variables are maintained on the stack at runtime and do NOT appear here.' },
+  { name: '.bss', desc: 'Uninitialized global and static C variables, plus any globals initialized to zero. Takes no space in the object file (just a placeholder) -- allocated at runtime.' },
+  { name: '.symtab', desc: 'Symbol table with entries for every function and global variable defined or referenced. Each entry contains name, size, type, binding (local/global/weak), and the section it belongs to.' },
+  { name: '.rel.text', desc: 'Relocation entries for the .text section. Each entry identifies a location in .text that must be modified when the linker combines object files. Includes call and addr instructions.' },
+  { name: '.rel.data', desc: 'Relocation entries for the .data section. Needed when initialized data contains pointers to functions or global variables whose addresses are not yet known.' },
+  { name: '.debug', desc: 'Debugging symbol table (generated with gcc -g). Contains entries for local variables, typedefs, original C source file info. Used by debuggers like GDB.' },
+  { name: '.strtab', desc: 'String table containing null-terminated strings for the symbol names in .symtab and section names in the section header table.' },
+  { name: 'Section Header Table', desc: 'An array of fixed-size entries, one per section. Each entry gives the section name, type, flags, address, offset in file, and size. Required for relocatable files; optional for executables.' },
+];
+
+function showElf(idx) {
+  const desc = document.getElementById('elfDesc');
+  desc.innerHTML = '<div class="name">' + elfData[idx].name + '</div>' + elfData[idx].desc;
+  document.querySelectorAll('.elf-section').forEach((s, i) => {
+    s.classList.toggle('selected', i === idx);
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 6: The Memory Hierarchy - CS:APP</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh}.header{background:linear-gradient(135deg,#161b22,#1a1f2e);padding:24px 32px;border-bottom:1px solid #30363d}.header h1{font-size:1.6em;color:#58a6ff;margin-bottom:4px}.header p{color:#8b949e;font-size:.9em}.container{display:flex;min-height:calc(100vh - 80px)}.sidebar{width:260px;background:#161b22;border-right:1px solid #30363d;padding:16px 0;flex-shrink:0}.sidebar a{display:block;padding:10px 20px;color:#8b949e;text-decoration:none;font-size:.85em;border-left:3px solid transparent;transition:all .2s}.sidebar a:hover{color:#c9d1d9;background:#1c2129}.sidebar a.active{color:#58a6ff;border-left-color:#58a6ff;background:#1c2129}.content{flex:1;padding:32px;max-width:1100px}.diagram{display:none}.diagram.active{display:block}.diagram h2{color:#58a6ff;margin-bottom:16px}.diagram p.desc{color:#8b949e;margin-bottom:24px;line-height:1.6}.card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin:16px 0}table{width:100%;border-collapse:collapse;margin:12px 0}th,td{padding:8px 12px;text-align:left;border:1px solid #30363d;font-size:.82em}th{background:#1c2129;color:#58a6ff}
+.cache-vis{margin:16px 0}.cache-set{display:flex;gap:2px;margin:4px 0;align-items:center}.cache-label{width:60px;font-size:.75em;color:#8b949e;text-align:right;padding-right:8px}.cache-line{display:flex;gap:1px;flex:1}.cache-cell{padding:6px 8px;text-align:center;font-size:.7em;font-family:monospace;border-radius:2px;min-width:40px;transition:all .3s}
+.addr-split{display:flex;margin:16px 0;border-radius:6px;overflow:hidden;font-family:monospace;text-align:center}
+.addr-split div{padding:10px 16px;font-size:.85em;font-weight:600}
+.disk-diagram{position:relative;width:300px;height:300px;margin:20px auto}
+.disk-platter{border-radius:50%;border:2px solid;position:absolute;display:flex;align-items:center;justify-content:center}
+.locality-demo{display:flex;gap:16px;flex-wrap:wrap;margin:16px 0}
+.locality-card{background:#1c2129;border:1px solid #30363d;border-radius:10px;padding:16px;flex:1;min-width:280px}
+.locality-card h3{font-size:.9em;margin-bottom:8px}
+.grid-access{display:grid;gap:2px;margin:8px 0}
+.grid-cell{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:3px;font-size:.6em;transition:all .3s}
+input[type=text]{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 12px;color:#e6edf3;font-family:monospace;font-size:1em;width:200px}
+input:focus{outline:none;border-color:#58a6ff}
+button{background:#238636;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-size:.85em}button:hover{background:#2ea043}
+.result{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;margin-top:12px;font-family:monospace;font-size:.82em;color:#7ee787}
+.tabs{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}.tab{padding:8px 16px;border-radius:6px;background:#1c2129;border:1px solid #30363d;color:#8b949e;cursor:pointer;font-size:.82em;transition:all .2s}.tab:hover{color:#c9d1d9}.tab.active{background:#58a6ff22;color:#58a6ff;border-color:#58a6ff}.tab-content{display:none}.tab-content.active{display:block}
+@media(max-width:768px){.container{flex-direction:column}.sidebar{width:100%;display:flex;overflow-x:auto}.sidebar a{white-space:nowrap}.content{padding:16px}}
+</style>
+</head>
+<body>
+<div class="header"><h1>Chapter 6: The Memory Hierarchy</h1><p>CS:APP - Computer Systems: A Programmer's Perspective, 2nd Edition</p></div>
+<div class="container">
+<nav class="sidebar">
+  <a href="#" class="active" onclick="showD('sramdram',this)">SRAM vs DRAM</a>
+  <a href="#" onclick="showD('disk',this)">Disk Geometry</a>
+  <a href="#" onclick="showD('cacheorg',this)">Cache Organization</a>
+  <a href="#" onclick="showD('cachesim',this)">Cache Simulator</a>
+  <a href="#" onclick="showD('locality',this)">Locality Patterns</a>
+  <a href="#" onclick="showD('mountain',this)">Memory Mountain</a>
+</nav>
+<main class="content">
+
+  <div id="sramdram" class="diagram active">
+    <h2>SRAM vs DRAM</h2>
+    <p class="desc">Two types of RAM with very different characteristics and use cases.</p>
+    <div class="card">
+      <table>
+        <tr><th>Property</th><th style="color:#7ee787">SRAM</th><th style="color:#d19a66">DRAM</th></tr>
+        <tr><td>Transistors/bit</td><td>6</td><td>1</td></tr>
+        <tr><td>Relative access time</td><td>1x (fast)</td><td>10x (slower)</td></tr>
+        <tr><td>Persistent?</td><td>Yes (while powered)</td><td>No (needs refresh)</td></tr>
+        <tr><td>Sensitive to disturbance?</td><td>No</td><td>Yes</td></tr>
+        <tr><td>Relative cost</td><td>100x (expensive)</td><td>1x (cheap)</td></tr>
+        <tr><td>Typical use</td><td style="color:#7ee787">Cache memories (L1, L2, L3)</td><td style="color:#d19a66">Main memory</td></tr>
+        <tr><td>Typical size</td><td>KBs to MBs</td><td>GBs</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:8px">Storage Technology Trends</h3>
+      <p style="color:#8b949e;font-size:.82em;line-height:1.6">DRAM density doubles every ~2 years, but access times improve only ~4% per year. CPU clock rates improve ~25% per year. This growing <strong style="color:#e06c75">processor-memory gap</strong> is the primary motivation for the memory hierarchy with caches.</p>
+    </div>
+  </div>
+
+  <div id="disk" class="diagram">
+    <h2>Disk Geometry & Access Time</h2>
+    <p class="desc">Understanding how disk drives work to appreciate why locality matters.</p>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">Disk Access Time Components</h3>
+      <table>
+        <tr><th>Component</th><th>Description</th><th>Typical Time</th></tr>
+        <tr><td style="color:#e06c75">Seek time</td><td>Move arm to target track</td><td>3-9 ms (avg ~5ms)</td></tr>
+        <tr><td style="color:#d19a66">Rotational latency</td><td>Wait for sector to rotate under head</td><td>~4ms (at 7200 RPM)</td></tr>
+        <tr><td style="color:#7ee787">Transfer time</td><td>Read/write the sector data</td><td>~0.02ms per sector</td></tr>
+      </table>
+      <p style="color:#8b949e;font-size:.82em;margin-top:8px"><strong>Total = Seek + Rotation + Transfer &asymp; 9ms</strong> for a random read. That's ~1,000,000x slower than SRAM! Sequential reads are much faster because seek and rotation are amortized.</p>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">SSD vs HDD</h3>
+      <table>
+        <tr><th></th><th style="color:#7ee787">SSD</th><th style="color:#d19a66">HDD</th></tr>
+        <tr><td>Sequential read</td><td>~500 MB/s</td><td>~100 MB/s</td></tr>
+        <tr><td>Random read</td><td>~50 us</td><td>~5-10 ms</td></tr>
+        <tr><td>Moving parts</td><td>None</td><td>Spinning platters + arm</td></tr>
+        <tr><td>Power</td><td>Low</td><td>Higher</td></tr>
+        <tr><td>Cost/GB</td><td>Higher</td><td>Lower</td></tr>
+        <tr><td>Wear out?</td><td>Yes (write endurance)</td><td>Mechanical failure</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div id="cacheorg" class="diagram">
+    <h2>Cache Organization</h2>
+    <p class="desc">A cache with S sets, E lines per set, B bytes per block. Total size = S &times; E &times; B bytes.</p>
+    <div class="tabs">
+      <div class="tab active" onclick="showTab('dm',this)">Direct-Mapped (E=1)</div>
+      <div class="tab" onclick="showTab('sa',this)">Set Associative (E=2)</div>
+      <div class="tab" onclick="showTab('fa',this)">Fully Associative</div>
+    </div>
+    <div id="dm" class="tab-content active">
+      <div class="card">
+        <h3 style="color:#7ee787;font-size:.9em;margin-bottom:8px">Direct-Mapped Cache (E=1 line per set)</h3>
+        <p style="color:#8b949e;font-size:.82em;margin-bottom:12px">Each set has exactly one line. Simple but prone to conflict misses.</p>
+        <div class="addr-split">
+          <div style="background:#c678dd;flex:3">Tag (t bits)</div>
+          <div style="background:#58a6ff;flex:2">Set Index (s bits)</div>
+          <div style="background:#7ee787;color:#0d1117;flex:1">Offset (b bits)</div>
+        </div>
+        <p style="color:#8b949e;font-size:.75em;text-align:center">Address bits: t = m - (s + b), where m = address bits, S = 2<sup>s</sup> sets, B = 2<sup>b</sup> bytes/block</p>
+        <div class="cache-vis" style="margin-top:16px">
+          <div class="cache-set"><span class="cache-label">Set 0:</span><div class="cache-line"><div class="cache-cell" style="background:#c678dd33">V</div><div class="cache-cell" style="background:#c678dd22">Tag</div><div class="cache-cell" style="background:#58a6ff22">B0</div><div class="cache-cell" style="background:#58a6ff22">B1</div><div class="cache-cell" style="background:#58a6ff22">...</div><div class="cache-cell" style="background:#58a6ff22">B<sub>B-1</sub></div></div></div>
+          <div class="cache-set"><span class="cache-label">Set 1:</span><div class="cache-line"><div class="cache-cell" style="background:#c678dd33">V</div><div class="cache-cell" style="background:#c678dd22">Tag</div><div class="cache-cell" style="background:#58a6ff22">B0</div><div class="cache-cell" style="background:#58a6ff22">B1</div><div class="cache-cell" style="background:#58a6ff22">...</div><div class="cache-cell" style="background:#58a6ff22">B<sub>B-1</sub></div></div></div>
+          <div class="cache-set"><span class="cache-label">...</span></div>
+          <div class="cache-set"><span class="cache-label">Set S-1:</span><div class="cache-line"><div class="cache-cell" style="background:#c678dd33">V</div><div class="cache-cell" style="background:#c678dd22">Tag</div><div class="cache-cell" style="background:#58a6ff22">B0</div><div class="cache-cell" style="background:#58a6ff22">B1</div><div class="cache-cell" style="background:#58a6ff22">...</div><div class="cache-cell" style="background:#58a6ff22">B<sub>B-1</sub></div></div></div>
+        </div>
+      </div>
+    </div>
+    <div id="sa" class="tab-content">
+      <div class="card">
+        <h3 style="color:#d19a66;font-size:.9em;margin-bottom:8px">Set Associative Cache (E=2 lines per set)</h3>
+        <p style="color:#8b949e;font-size:.82em;margin-bottom:12px">Each set has E lines. Reduces conflict misses. Must search all E lines in a set for matching tag.</p>
+        <div class="cache-vis">
+          <div class="cache-set"><span class="cache-label">Set 0:</span><div style="display:flex;flex-direction:column;gap:2px;flex:1"><div class="cache-line"><div class="cache-cell" style="background:#c678dd33">V</div><div class="cache-cell" style="background:#c678dd22">Tag</div><div class="cache-cell" style="background:#58a6ff22">Block data...</div></div><div class="cache-line"><div class="cache-cell" style="background:#d19a6633">V</div><div class="cache-cell" style="background:#d19a6622">Tag</div><div class="cache-cell" style="background:#e5c07b22">Block data...</div></div></div></div>
+          <div class="cache-set"><span class="cache-label">Set 1:</span><div style="display:flex;flex-direction:column;gap:2px;flex:1"><div class="cache-line"><div class="cache-cell" style="background:#c678dd33">V</div><div class="cache-cell" style="background:#c678dd22">Tag</div><div class="cache-cell" style="background:#58a6ff22">Block data...</div></div><div class="cache-line"><div class="cache-cell" style="background:#d19a6633">V</div><div class="cache-cell" style="background:#d19a6622">Tag</div><div class="cache-cell" style="background:#e5c07b22">Block data...</div></div></div></div>
+        </div>
+        <p style="color:#8b949e;font-size:.75em;margin-top:8px">Replacement policy (e.g., LRU) needed when set is full and a new line must be loaded.</p>
+      </div>
+    </div>
+    <div id="fa" class="tab-content">
+      <div class="card">
+        <h3 style="color:#e06c75;font-size:.9em;margin-bottom:8px">Fully Associative Cache (E=C/B, one set)</h3>
+        <p style="color:#8b949e;font-size:.82em;margin-bottom:12px">Only one set containing all lines. No conflict misses, but expensive to search all tags. Used for small caches like TLBs.</p>
+        <div class="addr-split">
+          <div style="background:#c678dd;flex:4">Tag (t = m - b bits)</div>
+          <div style="background:#7ee787;color:#0d1117;flex:1">Offset (b bits)</div>
+        </div>
+        <p style="color:#8b949e;font-size:.75em;text-align:center;margin-top:4px">No set index bits! Must compare tag against ALL lines (expensive for large caches).</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="cachesim" class="diagram">
+    <h2>Cache Hit/Miss Simulator</h2>
+    <p class="desc">Simulates a tiny direct-mapped cache: 4 sets, 1 line/set, 2 bytes/block. Enter memory addresses (0-31) to see hits and misses.</p>
+    <div class="card">
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <input type="text" id="cache-addr" placeholder="Address (0-31)" style="width:140px">
+        <button onclick="cacheAccess()">Access</button>
+        <button onclick="cacheReset()" style="background:#30363d">Reset</button>
+      </div>
+      <div class="cache-vis" id="cache-display" style="margin-top:16px"></div>
+      <div class="result" id="cache-log" style="max-height:200px;overflow-y:auto;white-space:pre-wrap"></div>
+    </div>
+  </div>
+
+  <div id="locality" class="diagram">
+    <h2>Locality Patterns</h2>
+    <p class="desc">Good locality = good cache performance. Two types of locality drive the memory hierarchy.</p>
+    <div class="locality-demo">
+      <div class="locality-card" style="border-color:#7ee787">
+        <h3 style="color:#7ee787">Temporal Locality</h3>
+        <p style="color:#8b949e;font-size:.82em;margin-bottom:8px">Recently accessed items are likely to be accessed again soon.</p>
+        <div style="background:#0d1117;padding:8px;border-radius:6px;font-family:monospace;font-size:.75em;color:#c9d1d9">
+          <span style="color:#c678dd">for</span>(i=0; i&lt;n; i++)<br>
+          &nbsp;&nbsp;sum += a[i]; <span style="color:#5c6370">// sum accessed n times!</span>
+        </div>
+      </div>
+      <div class="locality-card" style="border-color:#58a6ff">
+        <h3 style="color:#58a6ff">Spatial Locality</h3>
+        <p style="color:#8b949e;font-size:.82em;margin-bottom:8px">Items near recently accessed items are likely to be accessed soon.</p>
+        <div style="background:#0d1117;padding:8px;border-radius:6px;font-family:monospace;font-size:.75em;color:#c9d1d9">
+          <span style="color:#c678dd">for</span>(i=0; i&lt;n; i++)<br>
+          &nbsp;&nbsp;sum += a[i]; <span style="color:#5c6370">// stride-1: a[0],a[1],a[2]...</span>
+        </div>
+      </div>
+      <div class="locality-card" style="border-color:#e06c75">
+        <h3 style="color:#e06c75">Poor Locality</h3>
+        <p style="color:#8b949e;font-size:.82em;margin-bottom:8px">Large strides or random access patterns thrash the cache.</p>
+        <div style="background:#0d1117;padding:8px;border-radius:6px;font-family:monospace;font-size:.75em;color:#c9d1d9">
+          <span style="color:#c678dd">for</span>(i=0; i&lt;n; i++)<br>
+          &nbsp;&nbsp;sum += a[i*stride]; <span style="color:#5c6370">// stride-N: misses!</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:8px">Cache Miss Types</h3>
+      <table>
+        <tr><th>Type</th><th>Cause</th><th>Mitigation</th></tr>
+        <tr><td style="color:#58a6ff">Cold (compulsory)</td><td>First access to a block</td><td>Unavoidable; prefetching can help</td></tr>
+        <tr><td style="color:#d19a66">Conflict</td><td>Multiple blocks map to same set</td><td>Increase associativity or cache size</td></tr>
+        <tr><td style="color:#e06c75">Capacity</td><td>Working set exceeds cache size</td><td>Increase cache size or improve locality</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div id="mountain" class="diagram">
+    <h2>The Memory Mountain</h2>
+    <p class="desc">A visualization of read throughput as a function of spatial locality (stride) and temporal locality (working set size).</p>
+    <div class="card">
+      <div style="display:flex;gap:24px;flex-wrap:wrap">
+        <div style="flex:1;min-width:300px">
+          <h3 style="color:#ffa657;font-size:.9em;margin-bottom:8px">Understanding the Mountain</h3>
+          <p style="color:#8b949e;font-size:.82em;line-height:1.6">
+            <strong style="color:#7ee787">Ridges (temporal locality):</strong> When working set fits in L1/L2/L3 cache, throughput is high. Each cache level creates a distinct plateau.<br><br>
+            <strong style="color:#58a6ff">Slopes (spatial locality):</strong> Stride-1 access maximizes benefit from cache line prefetch. As stride increases, more cache lines are touched per access, reducing effective throughput.<br><br>
+            <strong style="color:#e06c75">Valley:</strong> Large working set + large stride = worst case. Every access is a main memory access.
+          </p>
+        </div>
+        <div style="flex:1;min-width:280px">
+          <table>
+            <tr><th>Region</th><th>Working Set</th><th>Stride</th><th>Throughput</th></tr>
+            <tr><td style="color:#7ee787">Peak</td><td>&lt; L1</td><td>1</td><td>~12 GB/s</td></tr>
+            <tr><td style="color:#98c379">L1 ridge</td><td>&lt; L1</td><td>any</td><td>~8-12 GB/s</td></tr>
+            <tr><td style="color:#58a6ff">L2 ridge</td><td>&lt; L2</td><td>1</td><td>~4-8 GB/s</td></tr>
+            <tr><td style="color:#d19a66">Mem slope</td><td>&gt; L3</td><td>1</td><td>~2-4 GB/s</td></tr>
+            <tr><td style="color:#e06c75">Valley</td><td>&gt; L3</td><td>large</td><td>~0.5 GB/s</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main></div>
+<script>
+function showD(id,el){document.querySelectorAll('.diagram').forEach(d=>d.classList.remove('active'));document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));document.getElementById(id).classList.add('active');el.classList.add('active')}
+function showTab(id,el){el.parentElement.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');const p=el.closest('.diagram');p.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));document.getElementById(id).classList.add('active')}
+
+// Cache simulator: 4 sets, 1 line/set, 2 bytes/block (b=1, s=2, t=2 for 5-bit addr)
+let cache=[{v:0,tag:-1},{v:0,tag:-1},{v:0,tag:-1},{v:0,tag:-1}];
+let cacheLog=[];
+function renderCache(){
+  const d=document.getElementById('cache-display');
+  let h='';
+  cache.forEach((line,i)=>{
+    const bg=line.v?'#23863622':'#1c2129';
+    h+=`<div class="cache-set"><span class="cache-label">Set ${i}:</span><div class="cache-line">
+      <div class="cache-cell" style="background:${line.v?'#23863644':'#30363d22'}">${line.v?'1':'0'}</div>
+      <div class="cache-cell" style="background:#c678dd22">${line.v?line.tag.toString(2).padStart(2,'0'):'--'}</div>
+      <div class="cache-cell" style="background:#58a6ff22">${line.v?'[data]':'empty'}</div>
+    </div></div>`;
+  });
+  d.innerHTML=h;
+}
+function cacheAccess(){
+  const addr=parseInt(document.getElementById('cache-addr').value);
+  if(isNaN(addr)||addr<0||addr>31){cacheLog.push('Invalid address (use 0-31)');updateLog();return}
+  const bo=addr&1;
+  const si=(addr>>1)&3;
+  const tag=(addr>>3)&3;
+  const hit=cache[si].v&&cache[si].tag===tag;
+  cache[si]={v:1,tag:tag};
+  cacheLog.push(`Addr ${addr.toString().padStart(2)} (${addr.toString(2).padStart(5,'0')}) -> tag=${tag.toString(2).padStart(2,'0')} set=${si} offset=${bo} => ${hit?'HIT':'MISS'}`);
+  updateLog();renderCache();
+}
+function updateLog(){document.getElementById('cache-log').innerHTML=cacheLog.map(l=>l.includes('HIT')?`<span style="color:#7ee787">${l}</span>`:`<span style="color:#e06c75">${l}</span>`).join('\n')}
+function cacheReset(){cache=[{v:0,tag:-1},{v:0,tag:-1},{v:0,tag:-1},{v:0,tag:-1}];cacheLog=[];renderCache();document.getElementById('cache-log').innerHTML=''}
+renderCache();
+</script>
+</body>
+</html>

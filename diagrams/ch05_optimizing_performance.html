@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 5: Optimizing Program Performance - CS:APP</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh}.header{background:linear-gradient(135deg,#161b22,#1a1f2e);padding:24px 32px;border-bottom:1px solid #30363d}.header h1{font-size:1.6em;color:#58a6ff;margin-bottom:4px}.header p{color:#8b949e;font-size:.9em}.container{display:flex;min-height:calc(100vh - 80px)}.sidebar{width:260px;background:#161b22;border-right:1px solid #30363d;padding:16px 0;flex-shrink:0}.sidebar a{display:block;padding:10px 20px;color:#8b949e;text-decoration:none;font-size:.85em;border-left:3px solid transparent;transition:all .2s}.sidebar a:hover{color:#c9d1d9;background:#1c2129}.sidebar a.active{color:#58a6ff;border-left-color:#58a6ff;background:#1c2129}.content{flex:1;padding:32px;max-width:1100px}.diagram{display:none}.diagram.active{display:block}.diagram h2{color:#58a6ff;margin-bottom:16px}.diagram p.desc{color:#8b949e;margin-bottom:24px;line-height:1.6}.card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin:16px 0}
+.opt-steps{display:flex;flex-direction:column;gap:8px;margin:16px 0}
+.opt-step{display:flex;align-items:center;gap:16px;background:#1c2129;border:1px solid #30363d;border-radius:8px;padding:14px 16px;cursor:pointer;transition:all .3s}
+.opt-step:hover{border-color:#58a6ff;transform:translateX(4px)}
+.opt-step .cpe{min-width:70px;text-align:center;font-size:1.2em;font-weight:bold;font-family:monospace}
+.opt-step .info{flex:1}.opt-step .info h3{font-size:.9em;margin-bottom:2px}.opt-step .info p{font-size:.75em;color:#8b949e}
+.opt-detail{display:none;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;margin-top:8px;font-size:.82em;color:#8b949e;line-height:1.6}
+.bar-chart{display:flex;align-items:flex-end;gap:8px;height:200px;margin:24px 0;padding:0 16px}
+.bar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;flex:1;transition:all .5s}
+.bar-fill{width:100%;border-radius:4px 4px 0 0;transition:height .5s;min-height:4px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;font-size:.7em;font-weight:bold}
+.bar-label{font-size:.65em;color:#8b949e;margin-top:4px;text-align:center;max-width:80px}
+.code{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;font-family:monospace;font-size:.82em;color:#c9d1d9;line-height:1.6;overflow-x:auto;white-space:pre}
+.processor-diagram{display:flex;gap:16px;flex-wrap:wrap;margin:16px 0}
+.proc-unit{background:#1c2129;border:1px solid #30363d;border-radius:10px;padding:16px;flex:1;min-width:250px}
+.proc-unit h3{font-size:.9em;margin-bottom:8px}
+.fu-list{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.fu-item{display:flex;justify-content:space-between;padding:6px 8px;background:#0d1117;border-radius:4px;font-size:.75em}
+input[type=range]{width:100%;accent-color:#58a6ff}
+input[type=number]{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:6px 10px;color:#e6edf3;font-family:monospace;width:80px}
+.calc-result{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:16px;margin-top:12px;text-align:center}
+.calc-result .big{font-size:2em;font-weight:bold;color:#7ee787}
+table{width:100%;border-collapse:collapse;margin:12px 0}th,td{padding:8px 12px;text-align:left;border:1px solid #30363d;font-size:.82em}th{background:#1c2129;color:#58a6ff}
+@media(max-width:768px){.container{flex-direction:column}.sidebar{width:100%;display:flex;overflow-x:auto}.sidebar a{white-space:nowrap}.content{padding:16px}}
+</style>
+</head>
+<body>
+<div class="header"><h1>Chapter 5: Optimizing Program Performance</h1><p>CS:APP - Computer Systems: A Programmer's Perspective, 2nd Edition</p></div>
+<div class="container">
+<nav class="sidebar">
+  <a href="#" class="active" onclick="showD('optlevels',this)">Optimization Levels</a>
+  <a href="#" onclick="showD('processor',this)">Modern Processor</a>
+  <a href="#" onclick="showD('cpe',this)">CPE Chart</a>
+  <a href="#" onclick="showD('unroll',this)">Loop Unrolling</a>
+  <a href="#" onclick="showD('dataflow',this)">Data Flow & Parallelism</a>
+  <a href="#" onclick="showD('amdahl',this)">Amdahl's Law</a>
+</nav>
+<main class="content">
+
+  <div id="optlevels" class="diagram active">
+    <h2>Optimization Progression</h2>
+    <p class="desc">Step-by-step techniques to improve the performance of a combining function. Click each step.</p>
+    <div class="opt-steps" id="opt-steps"></div>
+  </div>
+
+  <div id="processor" class="diagram">
+    <h2>Modern Superscalar Processor</h2>
+    <p class="desc">Out-of-order execution with multiple functional units operating in parallel.</p>
+    <div class="processor-diagram">
+      <div class="proc-unit" style="border-color:#58a6ff">
+        <h3 style="color:#58a6ff">Instruction Control Unit (ICU)</h3>
+        <div class="fu-list">
+          <div class="fu-item"><span style="color:#7ee787">Fetch</span><span>Read instructions from I-cache</span></div>
+          <div class="fu-item"><span style="color:#7ee787">Decode</span><span>Convert to micro-operations</span></div>
+          <div class="fu-item"><span style="color:#7ee787">Branch Predict</span><span>Guess branch outcomes</span></div>
+          <div class="fu-item"><span style="color:#7ee787">Retire</span><span>Commit results in order</span></div>
+        </div>
+      </div>
+      <div class="proc-unit" style="border-color:#ffa657">
+        <h3 style="color:#ffa657">Execution Unit (EU)</h3>
+        <div class="fu-list">
+          <div class="fu-item"><span style="color:#d19a66">Int ALU x3</span><span>Latency: 1, Issue: 1</span></div>
+          <div class="fu-item"><span style="color:#d19a66">FP Add</span><span>Latency: 3, Issue: 1</span></div>
+          <div class="fu-item"><span style="color:#d19a66">FP Multiply</span><span>Latency: 5, Issue: 1</span></div>
+          <div class="fu-item"><span style="color:#d19a66">Load Unit x2</span><span>Latency: 4, Issue: 1</span></div>
+          <div class="fu-item"><span style="color:#d19a66">Store Unit</span><span>Latency: 1, Issue: 1</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <p style="color:#8b949e;font-size:.82em;line-height:1.6"><strong style="color:#ffa657">Key Concepts:</strong> <strong>Latency</strong> = total cycles for one operation. <strong>Issue time</strong> = min cycles between starting new operations (pipelining). <strong>Capacity</strong> = number of functional units of that type. The processor can issue multiple operations per cycle if they use different functional units.</p>
+    </div>
+  </div>
+
+  <div id="cpe" class="diagram">
+    <h2>CPE (Cycles Per Element) Improvement</h2>
+    <p class="desc">How each optimization reduces the CPE for a combining operation (e.g., summing an array of doubles).</p>
+    <div class="bar-chart" id="cpe-chart"></div>
+  </div>
+
+  <div id="unroll" class="diagram">
+    <h2>Loop Unrolling</h2>
+    <p class="desc">Reduce loop overhead and enable instruction-level parallelism by processing multiple elements per iteration.</p>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div class="card" style="flex:1;min-width:280px">
+        <h3 style="color:#e06c75;font-size:.85em;margin-bottom:8px">Original (1x1)</h3>
+        <div class="code"><span style="color:#c678dd">for</span> (i = 0; i < n; i++)
+    acc = acc OP data[i];</div>
+        <p style="color:#8b949e;font-size:.75em;margin-top:8px">1 element per iteration. Sequential dependency chain on acc.</p>
+      </div>
+      <div class="card" style="flex:1;min-width:280px">
+        <h3 style="color:#d19a66;font-size:.85em;margin-bottom:8px">2x1 Unrolled</h3>
+        <div class="code"><span style="color:#c678dd">for</span> (i = 0; i < n-1; i+=2)
+    acc = (acc OP data[i]) OP data[i+1];
+<span style="color:#5c6370">// handle remaining</span></div>
+        <p style="color:#8b949e;font-size:.75em;margin-top:8px">2 elements per iteration, but still one accumulator. Reduces loop overhead but NOT the critical path.</p>
+      </div>
+      <div class="card" style="flex:1;min-width:280px">
+        <h3 style="color:#7ee787;font-size:.85em;margin-bottom:8px">2x2 Unrolled (2 accumulators)</h3>
+        <div class="code"><span style="color:#c678dd">for</span> (i = 0; i < n-1; i+=2) {
+    acc0 = acc0 OP data[i];
+    acc1 = acc1 OP data[i+1];
+}
+result = acc0 OP acc1;</div>
+        <p style="color:#7ee787;font-size:.75em;margin-top:8px">Two independent dependency chains! Enables instruction-level parallelism. CPE can be halved.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="dataflow" class="diagram">
+    <h2>Data Flow & Parallelism</h2>
+    <p class="desc">Understanding the critical path through data-flow graphs determines achievable performance.</p>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">Techniques to Break Data Dependencies</h3>
+      <table>
+        <tr><th>Technique</th><th>How It Works</th><th>CPE Impact</th></tr>
+        <tr><td style="color:#7ee787">Multiple Accumulators</td><td>Split computation into k independent sums, merge at end</td><td>Divides critical path by k (up to # FUs)</td></tr>
+        <tr><td style="color:#7ee787">Reassociation</td><td>Change (acc OP d[i]) OP d[i+1] to acc OP (d[i] OP d[i+1])</td><td>Creates independent sub-computations</td></tr>
+        <tr><td style="color:#7ee787">SIMD (vectorization)</td><td>Use SSE/AVX to process 4/8 elements with one instruction</td><td>Divides by SIMD width (4x, 8x, etc.)</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:8px">Throughput Bounds</h3>
+      <p style="color:#8b949e;font-size:.82em;line-height:1.6">The CPE is bounded by: <strong>max(critical_path_latency / unroll_factor, 1 / throughput)</strong>. For FP multiply (latency 5, throughput 1/cycle), with 5 accumulators: CPE = max(5/5, 1) = 1.0. You cannot beat the throughput bound.</p>
+    </div>
+  </div>
+
+  <div id="amdahl" class="diagram">
+    <h2>Amdahl's Law Calculator</h2>
+    <p class="desc">S = 1 / ((1 - &alpha;) + &alpha;/k), where &alpha; = fraction of time optimized, k = speedup of that part.</p>
+    <div class="card">
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+        <div>
+          <label style="font-size:.85em;color:#8b949e">Fraction optimized (&alpha;): <strong id="alpha-val" style="color:#7ee787">60%</strong></label><br>
+          <input type="range" id="alpha" min="0" max="100" value="60" oninput="calcAmdahl()">
+        </div>
+        <div>
+          <label style="font-size:.85em;color:#8b949e">Speedup factor (k):</label><br>
+          <input type="number" id="kfactor" value="4" min="1" max="1000" oninput="calcAmdahl()">
+        </div>
+      </div>
+      <div class="calc-result">
+        <div style="color:#8b949e;font-size:.85em">Overall Speedup</div>
+        <div class="big" id="amdahl-result">1.82x</div>
+        <div style="color:#8b949e;font-size:.75em;margin-top:4px" id="amdahl-detail"></div>
+      </div>
+      <p style="color:#8b949e;font-size:.8em;margin-top:12px;line-height:1.5"><strong style="color:#ffa657">Key Insight:</strong> Even with infinite speedup (k=&infin;) on &alpha;=60% of the code, overall speedup is at most 1/(1-0.6) = 2.5x. The unoptimized portion limits total improvement. To significantly speed up a system, you must improve a large fraction of it.</p>
+    </div>
+  </div>
+
+</main></div>
+<script>
+function showD(id,el){document.querySelectorAll('.diagram').forEach(d=>d.classList.remove('active'));document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));document.getElementById(id).classList.add('active');el.classList.add('active')}
+
+// Optimization steps
+const opts=[
+  {name:'Original Code',cpe:'20.0+',desc:'Unoptimized: vector length check in loop, procedure calls, memory references every iteration.',clr:'#e06c75'},
+  {name:'Move vec_length() out of loop',cpe:'12.0',desc:'Loop-invariant code motion: compute the loop bound once before the loop instead of every iteration.',clr:'#d19a66'},
+  {name:'Reduce procedure calls',cpe:'8.0',desc:'Access array data directly instead of through a function call (get_vec_element) each iteration.',clr:'#e5c07b'},
+  {name:'Eliminate memory references',cpe:'5.0',desc:'Use a local variable (register) for the accumulator instead of reading/writing memory each iteration.',clr:'#98c379'},
+  {name:'2x1 Loop unrolling',cpe:'5.0',desc:'Process 2 elements per iteration. Reduces loop overhead but doesn\'t break the data dependency chain.',clr:'#56b6c2'},
+  {name:'2x2 Multiple accumulators',cpe:'2.5',desc:'Two independent accumulators create two parallel dependency chains. Exploits instruction-level parallelism.',clr:'#61afef'},
+  {name:'Reassociation (2x1a)',cpe:'2.5',desc:'Change parenthesization to create independent computations within each iteration.',clr:'#c678dd'},
+  {name:'10x10 Full unroll+accum',cpe:'1.0',desc:'10 accumulators with 10x unrolling. Saturates functional unit throughput. Near theoretical minimum.',clr:'#7ee787'},
+];
+const stepsEl=document.getElementById('opt-steps');
+opts.forEach((o,i)=>{
+  const d=document.createElement('div');d.className='opt-step';
+  d.innerHTML=`<div class="cpe" style="color:${o.clr}">${o.cpe}</div><div class="info"><h3 style="color:${o.clr}">${o.name}</h3><p>${o.desc}</p></div>`;
+  stepsEl.appendChild(d);
+});
+
+// CPE Chart
+const cpeData=[{l:'Original',v:20,c:'#e06c75'},{l:'Code Motion',v:12,c:'#d19a66'},{l:'Direct Access',v:8,c:'#e5c07b'},{l:'Accum in Reg',v:5,c:'#98c379'},{l:'2x1 Unroll',v:5,c:'#56b6c2'},{l:'2x2 Accum',v:2.5,c:'#61afef'},{l:'10x10',v:1,c:'#7ee787'}];
+const chart=document.getElementById('cpe-chart');
+const maxCPE=22;
+cpeData.forEach(d=>{
+  const bar=document.createElement('div');bar.className='bar';
+  bar.innerHTML=`<div class="bar-fill" style="height:${(d.v/maxCPE)*100}%;background:${d.c}">${d.v}</div><div class="bar-label">${d.l}</div>`;
+  chart.appendChild(bar);
+});
+
+// Amdahl
+function calcAmdahl(){
+  const a=document.getElementById('alpha').value/100;
+  const k=parseFloat(document.getElementById('kfactor').value)||1;
+  document.getElementById('alpha-val').textContent=Math.round(a*100)+'%';
+  const s=1/((1-a)+a/k);
+  document.getElementById('amdahl-result').textContent=s.toFixed(2)+'x';
+  const maxS=1/(1-a);
+  document.getElementById('amdahl-detail').textContent=`S = 1/((1-${a.toFixed(2)}) + ${a.toFixed(2)}/${k}) = ${s.toFixed(2)}x  |  Max possible (k=inf): ${a<1?maxS.toFixed(2):'inf'}x`;
+}
+calcAmdahl();
+</script>
+</body>
+</html>

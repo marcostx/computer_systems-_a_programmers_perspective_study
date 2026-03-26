@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 10: System-Level I/O - CS:APP</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh}.header{background:linear-gradient(135deg,#161b22,#1a1f2e);padding:24px 32px;border-bottom:1px solid #30363d}.header h1{font-size:1.6em;color:#58a6ff;margin-bottom:4px}.header p{color:#8b949e;font-size:.9em}.container{display:flex;min-height:calc(100vh - 80px)}.sidebar{width:260px;background:#161b22;border-right:1px solid #30363d;padding:16px 0;flex-shrink:0}.sidebar a{display:block;padding:10px 20px;color:#8b949e;text-decoration:none;font-size:.85em;border-left:3px solid transparent;transition:all .2s}.sidebar a:hover{color:#c9d1d9;background:#1c2129}.sidebar a.active{color:#58a6ff;border-left-color:#58a6ff;background:#1c2129}.content{flex:1;padding:32px;max-width:1100px}.diagram{display:none}.diagram.active{display:block}.diagram h2{color:#58a6ff;margin-bottom:16px}.diagram p.desc{color:#8b949e;margin-bottom:24px;line-height:1.6}.card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin:16px 0}table{width:100%;border-collapse:collapse;margin:12px 0}th,td{padding:8px 12px;text-align:left;border:1px solid #30363d;font-size:.82em}th{background:#1c2129;color:#58a6ff}
+.flow-diagram{display:flex;align-items:center;gap:8px;margin:16px 0;flex-wrap:wrap;justify-content:center}
+.flow-box{background:#1c2129;border:2px solid #30363d;border-radius:10px;padding:14px 18px;text-align:center;min-width:90px;transition:all .3s;cursor:pointer}
+.flow-box:hover{border-color:#58a6ff;transform:translateY(-2px)}
+.flow-arrow{color:#58a6ff;font-size:1.3em}
+.fd-table{display:flex;gap:24px;flex-wrap:wrap;margin:16px 0;justify-content:center}
+.fd-col{min-width:200px}
+.fd-col h3{font-size:.85em;margin-bottom:8px;text-align:center;padding:8px;border-radius:6px}
+.fd-entry{display:flex;justify-content:space-between;padding:6px 10px;background:#0d1117;border-radius:4px;margin:2px 0;font-size:.75em;font-family:monospace}
+.scenario{display:flex;gap:16px;flex-wrap:wrap;margin:16px 0}
+.scenario-card{background:#1c2129;border:1px solid #30363d;border-radius:10px;padding:16px;flex:1;min-width:280px;cursor:pointer;transition:all .3s}
+.scenario-card:hover{border-color:#ffa657}
+.scenario-card h3{font-size:.9em;margin-bottom:8px}
+.code{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;font-family:monospace;font-size:.82em;color:#c9d1d9;line-height:1.6;overflow-x:auto;white-space:pre}
+@media(max-width:768px){.container{flex-direction:column}.sidebar{width:100%;display:flex;overflow-x:auto}.sidebar a{white-space:nowrap}.content{padding:16px}}
+</style>
+</head>
+<body>
+<div class="header"><h1>Chapter 10: System-Level I/O</h1><p>CS:APP - Computer Systems: A Programmer's Perspective, 2nd Edition</p></div>
+<div class="container">
+<nav class="sidebar">
+  <a href="#" class="active" onclick="showD('unixio',this)">Unix I/O Model</a>
+  <a href="#" onclick="showD('fdtable',this)">File Descriptor Tables</a>
+  <a href="#" onclick="showD('sharing',this)">File Sharing</a>
+  <a href="#" onclick="showD('redirect',this)">I/O Redirection</a>
+  <a href="#" onclick="showD('rio',this)">Robust I/O (Rio)</a>
+  <a href="#" onclick="showD('comparison',this)">I/O Comparison</a>
+</nav>
+<main class="content">
+
+  <div id="unixio" class="diagram active">
+    <h2>Unix I/O Model</h2>
+    <p class="desc">All I/O devices are modeled as files. A uniform interface: open, read, write, close.</p>
+    <div class="flow-diagram">
+      <div class="flow-box" style="border-color:#58a6ff"><div style="color:#58a6ff;font-weight:600">open()</div><div style="font-size:.7em;color:#8b949e">Returns fd</div></div>
+      <div class="flow-arrow">&#10132;</div>
+      <div class="flow-box" style="border-color:#7ee787"><div style="color:#7ee787;font-weight:600">read() / write()</div><div style="font-size:.7em;color:#8b949e">Transfer bytes</div></div>
+      <div class="flow-arrow">&#10132;</div>
+      <div class="flow-box" style="border-color:#e06c75"><div style="color:#e06c75;font-weight:600">close()</div><div style="font-size:.7em;color:#8b949e">Release fd</div></div>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">Standard File Descriptors</h3>
+      <table>
+        <tr><th>fd</th><th>Name</th><th>Macro</th><th>Default</th></tr>
+        <tr><td style="color:#7ee787;font-weight:bold">0</td><td>Standard Input</td><td>STDIN_FILENO</td><td>Keyboard</td></tr>
+        <tr><td style="color:#58a6ff;font-weight:bold">1</td><td>Standard Output</td><td>STDOUT_FILENO</td><td>Terminal</td></tr>
+        <tr><td style="color:#e06c75;font-weight:bold">2</td><td>Standard Error</td><td>STDERR_FILENO</td><td>Terminal</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">File Types</h3>
+      <table>
+        <tr><th>Type</th><th>Description</th><th>Test Macro</th></tr>
+        <tr><td style="color:#7ee787">Regular file</td><td>Contains arbitrary data (text or binary)</td><td>S_ISREG()</td></tr>
+        <tr><td style="color:#58a6ff">Directory</td><td>Array of links mapping filenames to files</td><td>S_ISDIR()</td></tr>
+        <tr><td style="color:#d19a66">Socket</td><td>Communication endpoint for network I/O</td><td>S_ISSOCK()</td></tr>
+        <tr><td style="color:#c678dd">Named pipe</td><td>FIFO for inter-process communication</td><td>S_ISFIFO()</td></tr>
+        <tr><td style="color:#e06c75">Symbolic link</td><td>Pointer to another file</td><td>S_ISLNK()</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div id="fdtable" class="diagram">
+    <h2>Kernel Data Structures for I/O</h2>
+    <p class="desc">Three tables manage open files: per-process descriptor table, system-wide open file table, and v-node table.</p>
+    <div class="fd-table">
+      <div class="fd-col">
+        <h3 style="background:#58a6ff22;color:#58a6ff">Descriptor Table (per-process)</h3>
+        <div class="fd-entry"><span>fd 0</span><span style="color:#58a6ff">&rarr; File A</span></div>
+        <div class="fd-entry"><span>fd 1</span><span style="color:#58a6ff">&rarr; File B</span></div>
+        <div class="fd-entry"><span>fd 2</span><span style="color:#58a6ff">&rarr; File B</span></div>
+        <div class="fd-entry"><span>fd 3</span><span style="color:#58a6ff">&rarr; File C</span></div>
+      </div>
+      <div class="fd-col">
+        <h3 style="background:#ffa65722;color:#ffa657">Open File Table (system-wide)</h3>
+        <div class="fd-entry"><span>File A</span><span>pos=300, refcnt=1</span></div>
+        <div class="fd-entry"><span>File B</span><span>pos=0, refcnt=2</span></div>
+        <div class="fd-entry"><span>File C</span><span>pos=1024, refcnt=1</span></div>
+      </div>
+      <div class="fd-col">
+        <h3 style="background:#7ee78722;color:#7ee787">v-node Table</h3>
+        <div class="fd-entry"><span>File info A</span><span>stat, size, type</span></div>
+        <div class="fd-entry"><span>File info B</span><span>stat, size, type</span></div>
+        <div class="fd-entry"><span>File info C</span><span>stat, size, type</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <p style="color:#8b949e;font-size:.82em;line-height:1.6">
+        <strong style="color:#58a6ff">Descriptor table:</strong> Each process has its own. Maps fd integers to entries in the open file table.<br>
+        <strong style="color:#ffa657">Open file table:</strong> Shared by all processes. Each entry has file position, reference count, and pointer to v-node.<br>
+        <strong style="color:#7ee787">v-node table:</strong> One per file. Contains file metadata (stat info). Shared across all open instances of the same file.
+      </p>
+    </div>
+  </div>
+
+  <div id="sharing" class="diagram">
+    <h2>File Sharing Scenarios</h2>
+    <p class="desc">Different processes can share files in various ways through the kernel data structures.</p>
+    <div class="scenario">
+      <div class="scenario-card" style="border-color:#58a6ff">
+        <h3 style="color:#58a6ff">Same file, different descriptors</h3>
+        <p style="color:#8b949e;font-size:.82em">Two open() calls on same file create separate open file table entries with independent file positions. Writes don't interfere.</p>
+      </div>
+      <div class="scenario-card" style="border-color:#7ee787">
+        <h3 style="color:#7ee787">After fork()</h3>
+        <p style="color:#8b949e;font-size:.82em">Child inherits parent's descriptor table. Both point to SAME open file table entries. They share the file position! Parent reads, child's position advances too.</p>
+      </div>
+      <div class="scenario-card" style="border-color:#d19a66">
+        <h3 style="color:#d19a66">After dup2()</h3>
+        <p style="color:#8b949e;font-size:.82em">Two descriptors in the same process point to the same open file table entry. They share position and flags. Used for I/O redirection.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="redirect" class="diagram">
+    <h2>I/O Redirection with dup2()</h2>
+    <p class="desc">dup2(oldfd, newfd) copies oldfd to newfd, closing newfd first if open.</p>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">Redirecting stdout to a file</h3>
+      <div class="code"><span style="color:#5c6370">// Redirect stdout to a file</span>
+int fd = open("output.txt", O_WRONLY|O_CREAT, 0644);
+dup2(fd, 1);     <span style="color:#5c6370">// fd 1 (stdout) now points to output.txt</span>
+close(fd);        <span style="color:#5c6370">// close the extra descriptor</span>
+printf("Hello");  <span style="color:#5c6370">// writes to output.txt, not terminal!</span></div>
+      <div style="display:flex;gap:16px;margin-top:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <h4 style="color:#8b949e;font-size:.8em;margin-bottom:8px">Before dup2:</h4>
+          <div class="fd-entry"><span>fd 0</span><span>&rarr; stdin (keyboard)</span></div>
+          <div class="fd-entry"><span style="color:#e06c75">fd 1</span><span>&rarr; stdout (terminal)</span></div>
+          <div class="fd-entry"><span>fd 2</span><span>&rarr; stderr (terminal)</span></div>
+          <div class="fd-entry"><span>fd 3</span><span>&rarr; output.txt</span></div>
+        </div>
+        <div style="flex:1;min-width:200px">
+          <h4 style="color:#8b949e;font-size:.8em;margin-bottom:8px">After dup2(3, 1):</h4>
+          <div class="fd-entry"><span>fd 0</span><span>&rarr; stdin (keyboard)</span></div>
+          <div class="fd-entry"><span style="color:#7ee787">fd 1</span><span style="color:#7ee787">&rarr; output.txt</span></div>
+          <div class="fd-entry"><span>fd 2</span><span>&rarr; stderr (terminal)</span></div>
+          <div class="fd-entry"><span>fd 3</span><span>&rarr; output.txt</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="rio" class="diagram">
+    <h2>Robust I/O (Rio) Package</h2>
+    <p class="desc">Handles short counts automatically - when read/write returns fewer bytes than requested.</p>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:8px">Why Short Counts Happen</h3>
+      <table>
+        <tr><th>Cause</th><th>read()</th><th>write()</th></tr>
+        <tr><td>EOF reached</td><td style="color:#7ee787">Yes</td><td>No</td></tr>
+        <tr><td>Reading from terminal</td><td style="color:#7ee787">Yes (line at a time)</td><td>No</td></tr>
+        <tr><td>Reading from network socket</td><td style="color:#7ee787">Yes</td><td style="color:#7ee787">Yes</td></tr>
+        <tr><td>Interrupted by signal</td><td style="color:#7ee787">Yes</td><td style="color:#7ee787">Yes</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">Rio Functions</h3>
+      <table>
+        <tr><th>Function</th><th>Type</th><th>Description</th></tr>
+        <tr><td style="color:#7ee787;font-family:monospace">rio_readn(fd, buf, n)</td><td>Unbuffered</td><td>Read exactly n bytes (retries on short counts)</td></tr>
+        <tr><td style="color:#7ee787;font-family:monospace">rio_writen(fd, buf, n)</td><td>Unbuffered</td><td>Write exactly n bytes (retries on short counts)</td></tr>
+        <tr><td style="color:#58a6ff;font-family:monospace">rio_readlineb(rp, buf, max)</td><td>Buffered</td><td>Read a text line (up to newline or max)</td></tr>
+        <tr><td style="color:#58a6ff;font-family:monospace">rio_readnb(rp, buf, n)</td><td>Buffered</td><td>Read n bytes (buffered, efficient for small reads)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div id="comparison" class="diagram">
+    <h2>When to Use Which I/O</h2>
+    <p class="desc">Guidelines for choosing between Unix I/O, Standard I/O, and Rio.</p>
+    <div class="card">
+      <table>
+        <tr><th>Scenario</th><th>Recommended</th><th>Why</th></tr>
+        <tr><td>Disk files (simple)</td><td style="color:#7ee787">Standard I/O (fopen, fprintf)</td><td>Convenient, buffered, portable</td></tr>
+        <tr><td>Network sockets</td><td style="color:#58a6ff">Rio (rio_readlineb, etc.)</td><td>Standard I/O has restrictions on sockets (can't mix read/write without fflush/fseek)</td></tr>
+        <tr><td>Signal handlers</td><td style="color:#d19a66">Unix I/O (read, write)</td><td>Only async-signal-safe I/O functions</td></tr>
+        <tr><td>Binary I/O</td><td style="color:#d19a66">Rio or Unix I/O</td><td>Standard I/O adds unwanted buffering/translation</td></tr>
+        <tr><td>File metadata</td><td style="color:#d19a66">Unix I/O (stat, fstat)</td><td>No standard I/O equivalent</td></tr>
+      </table>
+      <p style="color:#e06c75;font-size:.82em;margin-top:12px"><strong>Rule:</strong> Do NOT use standard I/O on network sockets. The buffering and restrictions make it error-prone for bidirectional network communication.</p>
+    </div>
+  </div>
+
+</main></div>
+<script>
+function showD(id,el){document.querySelectorAll('.diagram').forEach(d=>d.classList.remove('active'));document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));document.getElementById(id).classList.add('active');el.classList.add('active')}
+</script>
+</body>
+</html>

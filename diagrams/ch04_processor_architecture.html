@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 4: Processor Architecture - CS:APP</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh}.header{background:linear-gradient(135deg,#161b22,#1a1f2e);padding:24px 32px;border-bottom:1px solid #30363d}.header h1{font-size:1.6em;color:#58a6ff;margin-bottom:4px}.header p{color:#8b949e;font-size:.9em}.container{display:flex;min-height:calc(100vh - 80px)}.sidebar{width:260px;background:#161b22;border-right:1px solid #30363d;padding:16px 0;flex-shrink:0}.sidebar a{display:block;padding:10px 20px;color:#8b949e;text-decoration:none;font-size:.85em;border-left:3px solid transparent;transition:all .2s}.sidebar a:hover{color:#c9d1d9;background:#1c2129}.sidebar a.active{color:#58a6ff;border-left-color:#58a6ff;background:#1c2129}.content{flex:1;padding:32px;max-width:1100px}.diagram{display:none}.diagram.active{display:block}.diagram h2{color:#58a6ff;margin-bottom:16px}.diagram p.desc{color:#8b949e;margin-bottom:24px;line-height:1.6}.card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin:16px 0}table{width:100%;border-collapse:collapse;margin:12px 0}th,td{padding:8px 12px;text-align:left;border:1px solid #30363d;font-size:.82em}th{background:#1c2129;color:#58a6ff}.stage-row{display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;justify-content:center}.stage-box{background:#1c2129;border:2px solid #30363d;border-radius:10px;padding:16px;text-align:center;min-width:140px;cursor:pointer;transition:all .3s;flex:1;max-width:180px}.stage-box:hover,.stage-box.active{transform:translateY(-4px);box-shadow:0 8px 20px rgba(0,0,0,.3)}.stage-box .num{font-size:1.8em;margin-bottom:4px}.stage-box .name{font-weight:600;font-size:.9em}.stage-box .sub{font-size:.7em;margin-top:4px;opacity:.7}
+.pipe-vis{display:flex;flex-direction:column;gap:2px;margin:16px 0;overflow-x:auto}
+.pipe-row{display:flex;gap:2px}
+.pipe-cell{min-width:80px;padding:8px;text-align:center;border-radius:4px;font-size:.75em;font-weight:600;transition:all .3s}
+.hazard-demo{display:flex;gap:16px;flex-wrap:wrap;margin:16px 0}
+.hazard-card{background:#1c2129;border:1px solid #30363d;border-radius:10px;padding:16px;flex:1;min-width:280px;cursor:pointer;transition:all .3s}
+.hazard-card:hover{border-color:#ffa657}
+.hazard-card h3{color:#ffa657;font-size:.9em;margin-bottom:8px}
+.hazard-card p{color:#8b949e;font-size:.8em;line-height:1.5}
+.gate-container{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;margin:16px 0}
+.gate{background:#1c2129;border:1px solid #30363d;border-radius:10px;padding:16px;text-align:center;min-width:140px}
+.gate h3{color:#7ee787;font-size:.9em;margin-bottom:8px}
+.gate .symbol{font-size:2em;margin:8px 0}
+.gate table{font-size:.75em}
+.y86-group{margin:16px 0}
+.y86-group h3{color:#ffa657;font-size:.9em;margin-bottom:8px;padding:8px;background:#1c2129;border-radius:6px}
+@media(max-width:768px){.container{flex-direction:column}.sidebar{width:100%;display:flex;overflow-x:auto}.sidebar a{white-space:nowrap}.content{padding:16px}}
+</style>
+</head>
+<body>
+<div class="header"><h1>Chapter 4: Processor Architecture</h1><p>CS:APP - Computer Systems: A Programmer's Perspective, 2nd Edition</p></div>
+<div class="container">
+<nav class="sidebar">
+  <a href="#" class="active" onclick="showD('y86',this)">Y86 Instruction Set</a>
+  <a href="#" onclick="showD('seq',this)">SEQ Processor</a>
+  <a href="#" onclick="showD('pipeline',this)">Pipeline Stages</a>
+  <a href="#" onclick="showD('hazards',this)">Pipeline Hazards</a>
+  <a href="#" onclick="showD('gates',this)">Logic Gates & HCL</a>
+  <a href="#" onclick="showD('encoding',this)">Instruction Encoding</a>
+</nav>
+<main class="content">
+
+  <!-- Y86 Instructions -->
+  <div id="y86" class="diagram active">
+    <h2>Y86 Instruction Set</h2>
+    <p class="desc">A simplified instruction set for teaching processor design. Subset of IA32.</p>
+    <div class="y86-group">
+      <h3>Data Movement</h3>
+      <table>
+        <tr><th>Instruction</th><th>Encoding</th><th>Description</th></tr>
+        <tr><td style="color:#7ee787;font-family:monospace">rrmovl rA, rB</td><td>2 0 rA rB</td><td>Register to register</td></tr>
+        <tr><td style="color:#7ee787;font-family:monospace">irmovl V, rB</td><td>3 0 F rB V</td><td>Immediate to register</td></tr>
+        <tr><td style="color:#7ee787;font-family:monospace">rmmovl rA, D(rB)</td><td>4 0 rA rB D</td><td>Register to memory</td></tr>
+        <tr><td style="color:#7ee787;font-family:monospace">mrmovl D(rB), rA</td><td>5 0 rA rB D</td><td>Memory to register</td></tr>
+      </table>
+    </div>
+    <div class="y86-group">
+      <h3>Arithmetic/Logic (OPl rA, rB)</h3>
+      <table>
+        <tr><th>Instruction</th><th>Encoding</th><th>Description</th></tr>
+        <tr><td style="color:#d19a66;font-family:monospace">addl rA, rB</td><td>6 0 rA rB</td><td>rB = rB + rA</td></tr>
+        <tr><td style="color:#d19a66;font-family:monospace">subl rA, rB</td><td>6 1 rA rB</td><td>rB = rB - rA</td></tr>
+        <tr><td style="color:#d19a66;font-family:monospace">andl rA, rB</td><td>6 2 rA rB</td><td>rB = rB & rA</td></tr>
+        <tr><td style="color:#d19a66;font-family:monospace">xorl rA, rB</td><td>6 3 rA rB</td><td>rB = rB ^ rA</td></tr>
+      </table>
+    </div>
+    <div class="y86-group">
+      <h3>Jumps & Branches</h3>
+      <table>
+        <tr><th>Instruction</th><th>Encoding</th><th>Condition</th></tr>
+        <tr><td style="color:#c678dd;font-family:monospace">jmp Dest</td><td>7 0 Dest</td><td>Unconditional</td></tr>
+        <tr><td style="color:#c678dd;font-family:monospace">jle Dest</td><td>7 1 Dest</td><td>(SF^OF)|ZF</td></tr>
+        <tr><td style="color:#c678dd;font-family:monospace">jl Dest</td><td>7 2 Dest</td><td>SF^OF</td></tr>
+        <tr><td style="color:#c678dd;font-family:monospace">je Dest</td><td>7 3 Dest</td><td>ZF</td></tr>
+        <tr><td style="color:#c678dd;font-family:monospace">jne Dest</td><td>7 4 Dest</td><td>~ZF</td></tr>
+        <tr><td style="color:#c678dd;font-family:monospace">jge Dest</td><td>7 5 Dest</td><td>~(SF^OF)</td></tr>
+        <tr><td style="color:#c678dd;font-family:monospace">jg Dest</td><td>7 6 Dest</td><td>~(SF^OF)&~ZF</td></tr>
+      </table>
+    </div>
+    <div class="y86-group">
+      <h3>Stack & Miscellaneous</h3>
+      <table>
+        <tr><th>Instruction</th><th>Encoding</th><th>Description</th></tr>
+        <tr><td style="color:#58a6ff;font-family:monospace">pushl rA</td><td>A 0 rA F</td><td>Push register onto stack</td></tr>
+        <tr><td style="color:#58a6ff;font-family:monospace">popl rA</td><td>B 0 rA F</td><td>Pop from stack to register</td></tr>
+        <tr><td style="color:#58a6ff;font-family:monospace">call Dest</td><td>8 0 Dest</td><td>Push PC, jump to Dest</td></tr>
+        <tr><td style="color:#58a6ff;font-family:monospace">ret</td><td>9 0</td><td>Pop return address, jump</td></tr>
+        <tr><td style="color:#58a6ff;font-family:monospace">nop</td><td>1 0</td><td>No operation</td></tr>
+        <tr><td style="color:#58a6ff;font-family:monospace">halt</td><td>0 0</td><td>Stop execution</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- SEQ Processor -->
+  <div id="seq" class="diagram">
+    <h2>Sequential (SEQ) Processor Stages</h2>
+    <p class="desc">Each instruction passes through 6 stages in sequence. Click a stage to see what happens.</p>
+    <div class="stage-row">
+      <div class="stage-box" style="border-color:#e06c75" onclick="showSeq(0)"><div class="num" style="color:#e06c75">F</div><div class="name">Fetch</div><div class="sub">Read instruction</div></div>
+      <div class="stage-box" style="border-color:#d19a66" onclick="showSeq(1)"><div class="num" style="color:#d19a66">D</div><div class="name">Decode</div><div class="sub">Read registers</div></div>
+      <div class="stage-box" style="border-color:#e5c07b" onclick="showSeq(2)"><div class="num" style="color:#e5c07b">E</div><div class="name">Execute</div><div class="sub">ALU operation</div></div>
+      <div class="stage-box" style="border-color:#98c379" onclick="showSeq(3)"><div class="num" style="color:#98c379">M</div><div class="name">Memory</div><div class="sub">Read/write memory</div></div>
+      <div class="stage-box" style="border-color:#61afef" onclick="showSeq(4)"><div class="num" style="color:#61afef">W</div><div class="name">Write Back</div><div class="sub">Write registers</div></div>
+      <div class="stage-box" style="border-color:#c678dd" onclick="showSeq(5)"><div class="num" style="color:#c678dd">PC</div><div class="name">PC Update</div><div class="sub">Next instruction</div></div>
+    </div>
+    <div class="card" id="seq-detail"><p style="color:#8b949e">Click a stage above to see its details.</p></div>
+  </div>
+
+  <!-- Pipeline -->
+  <div id="pipeline" class="diagram">
+    <h2>5-Stage Pipeline</h2>
+    <p class="desc">Multiple instructions in different stages simultaneously. Pipeline registers (F/D/E/M/W) store intermediate values.</p>
+    <div class="pipe-vis">
+      <div class="pipe-row"><div class="pipe-cell" style="width:60px;color:#8b949e">Cycle</div><div class="pipe-cell" style="background:#e06c7533;color:#e06c75">1</div><div class="pipe-cell" style="background:#d19a6633;color:#d19a66">2</div><div class="pipe-cell" style="background:#e5c07b33;color:#e5c07b">3</div><div class="pipe-cell" style="background:#98c37933;color:#98c379">4</div><div class="pipe-cell" style="background:#61afef33;color:#61afef">5</div><div class="pipe-cell" style="background:#c678dd33;color:#c678dd">6</div><div class="pipe-cell" style="background:#58a6ff33;color:#58a6ff">7</div><div class="pipe-cell" style="background:#e06c7533;color:#e06c75">8</div><div class="pipe-cell" style="background:#d19a6633;color:#d19a66">9</div></div>
+      <div class="pipe-row"><div class="pipe-cell" style="width:60px;color:#7ee787">I1</div><div class="pipe-cell" style="background:#e06c75">F</div><div class="pipe-cell" style="background:#d19a66">D</div><div class="pipe-cell" style="background:#e5c07b">E</div><div class="pipe-cell" style="background:#98c379">M</div><div class="pipe-cell" style="background:#61afef">W</div><div class="pipe-cell"></div><div class="pipe-cell"></div><div class="pipe-cell"></div><div class="pipe-cell"></div></div>
+      <div class="pipe-row"><div class="pipe-cell" style="width:60px;color:#7ee787">I2</div><div class="pipe-cell"></div><div class="pipe-cell" style="background:#e06c75">F</div><div class="pipe-cell" style="background:#d19a66">D</div><div class="pipe-cell" style="background:#e5c07b">E</div><div class="pipe-cell" style="background:#98c379">M</div><div class="pipe-cell" style="background:#61afef">W</div><div class="pipe-cell"></div><div class="pipe-cell"></div><div class="pipe-cell"></div></div>
+      <div class="pipe-row"><div class="pipe-cell" style="width:60px;color:#7ee787">I3</div><div class="pipe-cell"></div><div class="pipe-cell"></div><div class="pipe-cell" style="background:#e06c75">F</div><div class="pipe-cell" style="background:#d19a66">D</div><div class="pipe-cell" style="background:#e5c07b">E</div><div class="pipe-cell" style="background:#98c379">M</div><div class="pipe-cell" style="background:#61afef">W</div><div class="pipe-cell"></div><div class="pipe-cell"></div></div>
+      <div class="pipe-row"><div class="pipe-cell" style="width:60px;color:#7ee787">I4</div><div class="pipe-cell"></div><div class="pipe-cell"></div><div class="pipe-cell"></div><div class="pipe-cell" style="background:#e06c75">F</div><div class="pipe-cell" style="background:#d19a66">D</div><div class="pipe-cell" style="background:#e5c07b">E</div><div class="pipe-cell" style="background:#98c379">M</div><div class="pipe-cell" style="background:#61afef">W</div><div class="pipe-cell"></div></div>
+      <div class="pipe-row"><div class="pipe-cell" style="width:60px;color:#7ee787">I5</div><div class="pipe-cell"></div><div class="pipe-cell"></div><div class="pipe-cell"></div><div class="pipe-cell"></div><div class="pipe-cell" style="background:#e06c75">F</div><div class="pipe-cell" style="background:#d19a66">D</div><div class="pipe-cell" style="background:#e5c07b">E</div><div class="pipe-cell" style="background:#98c379">M</div><div class="pipe-cell" style="background:#61afef">W</div></div>
+    </div>
+    <div class="card">
+      <p style="color:#8b949e;font-size:.82em;line-height:1.6"><strong style="color:#ffa657">Throughput:</strong> ~1 instruction per cycle (ideally). <strong style="color:#ffa657">Latency:</strong> 5 cycles per instruction. Pipeline registers (F, D, E, M, W) between stages hold intermediate results so each stage can work on a different instruction simultaneously.</p>
+    </div>
+  </div>
+
+  <!-- Hazards -->
+  <div id="hazards" class="diagram">
+    <h2>Pipeline Hazards</h2>
+    <p class="desc">Situations where the next instruction cannot execute in the following clock cycle.</p>
+    <div class="hazard-demo">
+      <div class="hazard-card">
+        <h3>Data Hazard</h3>
+        <p>An instruction depends on the result of a previous instruction still in the pipeline.</p>
+        <div style="background:#0d1117;padding:8px;border-radius:6px;margin-top:8px;font-family:monospace;font-size:.75em;color:#7ee787">
+          addl %eax, %ebx  <span style="color:#8b949e"># writes %ebx</span><br>
+          subl %ebx, %ecx  <span style="color:#e06c75"># reads %ebx - HAZARD!</span>
+        </div>
+        <p style="margin-top:8px"><strong style="color:#58a6ff">Solutions:</strong> Stalling (insert bubbles) or Forwarding (bypass result from pipeline register)</p>
+      </div>
+      <div class="hazard-card">
+        <h3>Control Hazard</h3>
+        <p>A conditional branch is in the pipeline; we don't know which instruction to fetch next.</p>
+        <div style="background:#0d1117;padding:8px;border-radius:6px;margin-top:8px;font-family:monospace;font-size:.75em;color:#7ee787">
+          je target   <span style="color:#8b949e"># branch not resolved yet</span><br>
+          ???         <span style="color:#e06c75"># which instruction?</span>
+        </div>
+        <p style="margin-top:8px"><strong style="color:#58a6ff">Solutions:</strong> Branch prediction (predict taken/not-taken), squash mispredicted instructions</p>
+      </div>
+      <div class="hazard-card">
+        <h3>Load/Use Hazard</h3>
+        <p>Special case: memory load followed immediately by use of loaded value. Cannot forward from Memory stage to Execute.</p>
+        <div style="background:#0d1117;padding:8px;border-radius:6px;margin-top:8px;font-family:monospace;font-size:.75em;color:#7ee787">
+          mrmovl 0(%eax), %ebx <span style="color:#8b949e"># load</span><br>
+          addl %ebx, %ecx      <span style="color:#e06c75"># use - must stall 1 cycle</span>
+        </div>
+        <p style="margin-top:8px"><strong style="color:#58a6ff">Solution:</strong> Insert one bubble (stall), then forward from Memory stage</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logic Gates -->
+  <div id="gates" class="diagram">
+    <h2>Logic Gates and HCL</h2>
+    <p class="desc">The Hardware Control Language (HCL) describes combinational logic for the processor.</p>
+    <div class="gate-container">
+      <div class="gate"><h3>AND</h3><div class="symbol">&amp;&amp;</div><table><tr><th>A</th><th>B</th><th>Out</th></tr><tr><td>0</td><td>0</td><td>0</td></tr><tr><td>0</td><td>1</td><td>0</td></tr><tr><td>1</td><td>0</td><td>0</td></tr><tr><td>1</td><td>1</td><td style="color:#7ee787">1</td></tr></table></div>
+      <div class="gate"><h3>OR</h3><div class="symbol">||</div><table><tr><th>A</th><th>B</th><th>Out</th></tr><tr><td>0</td><td>0</td><td>0</td></tr><tr><td>0</td><td>1</td><td style="color:#7ee787">1</td></tr><tr><td>1</td><td>0</td><td style="color:#7ee787">1</td></tr><tr><td>1</td><td>1</td><td style="color:#7ee787">1</td></tr></table></div>
+      <div class="gate"><h3>NOT</h3><div class="symbol">!</div><table><tr><th>A</th><th>Out</th></tr><tr><td>0</td><td style="color:#7ee787">1</td></tr><tr><td>1</td><td>0</td></tr></table></div>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:8px">HCL Example</h3>
+      <div style="background:#0d1117;padding:12px;border-radius:6px;font-family:monospace;font-size:.82em;color:#c9d1d9;line-height:1.6">
+        <span style="color:#c678dd">int</span> aluA = [<br>
+        &nbsp;&nbsp;icode == IRRMOVL : valA;<br>
+        &nbsp;&nbsp;icode <span style="color:#c678dd">in</span> { IOPL, IRMMOVL, IMRMOVL } : valA;<br>
+        &nbsp;&nbsp;icode <span style="color:#c678dd">in</span> { IIRMOVL } : valC;<br>
+        &nbsp;&nbsp;icode <span style="color:#c678dd">in</span> { ICALL, IPUSHL } : <span style="color:#d19a66">-4</span>;<br>
+        &nbsp;&nbsp;icode <span style="color:#c678dd">in</span> { IRET, IPOPL } : <span style="color:#d19a66">4</span>;<br>
+        ];
+      </div>
+      <p style="color:#8b949e;font-size:.8em;margin-top:8px">HCL uses case expressions (like C switch) to select values based on instruction type. Combinational logic - no state, output depends only on current inputs.</p>
+    </div>
+  </div>
+
+  <!-- Encoding -->
+  <div id="encoding" class="diagram">
+    <h2>Y86 Instruction Encoding</h2>
+    <p class="desc">Each instruction is 1-6 bytes. First byte: icode (4 bits) + ifun (4 bits).</p>
+    <div class="card">
+      <table>
+        <tr><th>Byte</th><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr>
+        <tr><td style="color:#7ee787">nop</td><td style="background:#e06c7522">1 0</td><td colspan="5"></td></tr>
+        <tr><td style="color:#7ee787">halt</td><td style="background:#e06c7522">0 0</td><td colspan="5"></td></tr>
+        <tr><td style="color:#7ee787">rrmovl rA,rB</td><td style="background:#e06c7522">2 0</td><td style="background:#d19a6622">rA rB</td><td colspan="4"></td></tr>
+        <tr><td style="color:#7ee787">irmovl V,rB</td><td style="background:#e06c7522">3 0</td><td style="background:#d19a6622">F rB</td><td colspan="4" style="background:#58a6ff22">V (4 bytes, little-endian)</td></tr>
+        <tr><td style="color:#7ee787">rmmovl rA,D(rB)</td><td style="background:#e06c7522">4 0</td><td style="background:#d19a6622">rA rB</td><td colspan="4" style="background:#58a6ff22">D (4 bytes)</td></tr>
+        <tr><td style="color:#7ee787">OPl rA,rB</td><td style="background:#e06c7522">6 fn</td><td style="background:#d19a6622">rA rB</td><td colspan="4"></td></tr>
+        <tr><td style="color:#7ee787">jXX Dest</td><td style="background:#e06c7522">7 fn</td><td colspan="5" style="background:#7ee78722">Dest (4 bytes)</td></tr>
+        <tr><td style="color:#7ee787">call Dest</td><td style="background:#e06c7522">8 0</td><td colspan="5" style="background:#7ee78722">Dest (4 bytes)</td></tr>
+        <tr><td style="color:#7ee787">pushl rA</td><td style="background:#e06c7522">A 0</td><td style="background:#d19a6622">rA F</td><td colspan="4"></td></tr>
+      </table>
+      <p style="color:#8b949e;font-size:.8em;margin-top:8px"><strong>Register IDs:</strong> %eax=0, %ecx=1, %edx=2, %ebx=3, %esp=4, %ebp=5, %esi=6, %edi=7, F=no register</p>
+    </div>
+  </div>
+
+</main></div>
+<script>
+function showD(id,el){document.querySelectorAll('.diagram').forEach(d=>d.classList.remove('active'));document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));document.getElementById(id).classList.add('active');el.classList.add('active')}
+const seqData=[
+  {t:'Fetch',c:'Read instruction bytes from memory using PC. Extract icode, ifun, rA, rB, valC (immediate/displacement), and compute valP (address of next instruction). The instruction memory and PC are the key hardware units.',clr:'#e06c75'},
+  {t:'Decode',c:'Read up to two operands from the register file, producing values valA and valB. For push/pop/call/ret, also reads %esp. The register file has two read ports.',clr:'#d19a66'},
+  {t:'Execute',c:'The ALU performs the operation specified by ifun (add, sub, and, xor) or computes an address (valE = valB + valC). Sets condition codes (ZF, SF, OF). For conditional branches, tests condition codes.',clr:'#e5c07b'},
+  {t:'Memory',c:'Read from or write to data memory. Load instructions read from M[valE] into valM. Store instructions write valA to M[valE]. Push/call write to stack; pop/ret read from stack.',clr:'#98c379'},
+  {t:'Write Back',c:'Write results (valE or valM) back to the register file. Up to two register writes per instruction. This completes the instruction execution.',clr:'#61afef'},
+  {t:'PC Update',c:'Set the PC to the address of the next instruction. Normally valP (next sequential). For jumps: valC (target). For call: valC. For ret: valM (popped from stack).',clr:'#c678dd'}
+];
+function showSeq(i){
+  const d=seqData[i];
+  document.querySelectorAll('.stage-box').forEach((s,j)=>s.classList.toggle('active',j===i));
+  document.querySelectorAll('.stage-box').forEach((s,j)=>{if(j===i)s.style.borderColor=d.clr;else s.style.borderColor='#30363d'});
+  document.getElementById('seq-detail').innerHTML=`<h3 style="color:${d.clr};margin-bottom:8px">${d.t} Stage</h3><p style="color:#8b949e;line-height:1.6;font-size:.85em">${d.c}</p>`;
+}
+</script>
+</body>
+</html>

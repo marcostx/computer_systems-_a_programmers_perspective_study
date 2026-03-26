@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 3: Machine-Level Representation of Programs - CS:APP</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh}
+.header{background:linear-gradient(135deg,#161b22,#1a1f2e);padding:24px 32px;border-bottom:1px solid #30363d}
+.header h1{font-size:1.6em;color:#58a6ff;margin-bottom:4px}
+.header p{color:#8b949e;font-size:.9em}
+.container{display:flex;min-height:calc(100vh - 80px)}
+.sidebar{width:260px;background:#161b22;border-right:1px solid #30363d;padding:16px 0;flex-shrink:0}
+.sidebar a{display:block;padding:10px 20px;color:#8b949e;text-decoration:none;font-size:.85em;border-left:3px solid transparent;transition:all .2s}
+.sidebar a:hover{color:#c9d1d9;background:#1c2129}
+.sidebar a.active{color:#58a6ff;border-left-color:#58a6ff;background:#1c2129}
+.content{flex:1;padding:32px;max-width:1100px;overflow-x:auto}
+.diagram{display:none}.diagram.active{display:block}
+.diagram h2{color:#58a6ff;margin-bottom:16px}
+.diagram p.desc{color:#8b949e;margin-bottom:24px;line-height:1.6}
+.card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin:16px 0}
+table{width:100%;border-collapse:collapse;margin:12px 0}
+th,td{padding:8px 12px;text-align:left;border:1px solid #30363d;font-size:.82em}
+th{background:#1c2129;color:#58a6ff}
+.reg-container{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0;justify-content:center}
+.reg{background:#1c2129;border:2px solid #30363d;border-radius:8px;padding:12px;min-width:180px;cursor:pointer;transition:all .3s;position:relative}
+.reg:hover,.reg.active{border-color:#58a6ff;box-shadow:0 4px 12px rgba(88,166,255,.15)}
+.reg .name{font-family:monospace;font-size:1.1em;color:#7ee787;font-weight:bold}
+.reg .purpose{font-size:.75em;color:#8b949e;margin-top:4px}
+.reg-bar{display:flex;height:28px;border-radius:4px;overflow:hidden;margin-top:8px;font-family:monospace;font-size:.7em}
+.reg-bar div{display:flex;align-items:center;justify-content:center;color:#fff}
+.stack-frame{display:flex;flex-direction:column;width:320px;margin:20px auto;border:2px solid #30363d;border-radius:8px;overflow:hidden}
+.sf-row{display:flex;border-bottom:1px solid #30363d;transition:all .3s}
+.sf-row:last-child{border-bottom:none}
+.sf-row:hover{background:#1c212966}
+.sf-addr{width:80px;padding:8px;font-family:monospace;font-size:.7em;color:#8b949e;text-align:right;border-right:1px solid #30363d}
+.sf-content{flex:1;padding:8px 12px;font-size:.82em}
+.sf-label{position:absolute;right:-140px;font-size:.7em;color:#8b949e}
+.tabs{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
+.tab{padding:8px 16px;border-radius:6px;background:#1c2129;border:1px solid #30363d;color:#8b949e;cursor:pointer;font-size:.82em;transition:all .2s}
+.tab:hover{color:#c9d1d9}.tab.active{background:#58a6ff22;color:#58a6ff;border-color:#58a6ff}
+.tab-content{display:none}.tab-content.active{display:block}
+.code{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;font-family:monospace;font-size:.82em;color:#c9d1d9;line-height:1.6;overflow-x:auto;white-space:pre}
+.code .kw{color:#c678dd}.code .reg-c{color:#7ee787}.code .imm{color:#d19a66}.code .cmt{color:#5c6370;font-style:italic}.code .lbl{color:#e06c75}
+.bo-diagram{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;margin:16px 0}
+.bo-stack{display:flex;flex-direction:column;width:280px;border:2px solid #30363d;border-radius:8px;overflow:hidden}
+.bo-cell{padding:10px;border-bottom:1px solid #30363d;font-size:.82em;text-align:center;transition:background .3s}
+@media(max-width:768px){.container{flex-direction:column}.sidebar{width:100%;display:flex;overflow-x:auto}.sidebar a{white-space:nowrap}.content{padding:16px}}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Chapter 3: Machine-Level Representation of Programs</h1>
+  <p>CS:APP - Computer Systems: A Programmer's Perspective, 2nd Edition</p>
+</div>
+<div class="container">
+  <nav class="sidebar">
+    <a href="#" class="active" onclick="showD('ia32regs',this)">IA32 Registers</a>
+    <a href="#" onclick="showD('x64regs',this)">x86-64 Registers</a>
+    <a href="#" onclick="showD('stack',this)">Stack Frame</a>
+    <a href="#" onclick="showD('addressing',this)">Addressing Modes</a>
+    <a href="#" onclick="showD('control',this)">Control Flow</a>
+    <a href="#" onclick="showD('bufover',this)">Buffer Overflow</a>
+  </nav>
+  <main class="content">
+
+    <!-- IA32 Registers -->
+    <div id="ia32regs" class="diagram active">
+      <h2>IA32 General-Purpose Registers</h2>
+      <p class="desc">8 general-purpose registers. Each 32-bit register can be accessed as 16-bit or 8-bit sub-registers. Click to highlight.</p>
+      <div class="reg-container" id="ia32-regs"></div>
+      <div class="card" id="ia32-detail" style="display:none"></div>
+    </div>
+
+    <!-- x86-64 Registers -->
+    <div id="x64regs" class="diagram">
+      <h2>x86-64 Register Set</h2>
+      <p class="desc">Extended to 16 general-purpose 64-bit registers. Backward compatible with IA32 sub-register naming.</p>
+      <div class="reg-container" id="x64-regs"></div>
+      <div class="card" style="margin-top:16px;font-size:.82em;color:#8b949e">
+        <strong style="color:#ffa657">Key differences from IA32:</strong><br>
+        - 16 registers instead of 8 (r8-r15 are new)<br>
+        - All 64 bits wide (%rax, %rbx, etc.)<br>
+        - %rsp is the stack pointer (no frame pointer by default)<br>
+        - First 6 integer args passed in registers: %rdi, %rsi, %rdx, %rcx, %r8, %r9<br>
+        - Return value in %rax
+      </div>
+    </div>
+
+    <!-- Stack Frame -->
+    <div id="stack" class="diagram">
+      <h2>Stack Frame Structure</h2>
+      <p class="desc">The runtime stack grows downward (toward lower addresses). Each function call creates a new stack frame.</p>
+      <div style="display:flex;gap:24px;flex-wrap:wrap;justify-content:center;align-items:start">
+        <div>
+          <h3 style="color:#ffa657;font-size:.9em;margin-bottom:8px;text-align:center">Stack Frame Layout</h3>
+          <div class="stack-frame">
+            <div class="sf-row" style="background:#c678dd22"><div class="sf-addr">higher</div><div class="sf-content" style="color:#c678dd">Caller's Frame ...</div></div>
+            <div class="sf-row" style="background:#e06c7522"><div class="sf-addr">+8+4n</div><div class="sf-content" style="color:#e06c75">Argument n</div></div>
+            <div class="sf-row" style="background:#e06c7522"><div class="sf-addr">+8</div><div class="sf-content" style="color:#e06c75">Argument 1</div></div>
+            <div class="sf-row" style="background:#ffa65722"><div class="sf-addr">+4</div><div class="sf-content" style="color:#ffa657">Return Address &larr; pushed by CALL</div></div>
+            <div class="sf-row" style="background:#7ee78722"><div class="sf-addr">%ebp&rarr;</div><div class="sf-content" style="color:#7ee787">Saved %ebp &larr; old frame pointer</div></div>
+            <div class="sf-row" style="background:#58a6ff22"><div class="sf-addr">-4</div><div class="sf-content" style="color:#58a6ff">Saved registers</div></div>
+            <div class="sf-row" style="background:#58a6ff22"><div class="sf-addr">-8</div><div class="sf-content" style="color:#58a6ff">Local variable 1</div></div>
+            <div class="sf-row" style="background:#58a6ff22"><div class="sf-addr">-12</div><div class="sf-content" style="color:#58a6ff">Local variable 2</div></div>
+            <div class="sf-row" style="background:#56b6c222"><div class="sf-addr">%esp&rarr;</div><div class="sf-content" style="color:#56b6c2">Top of Stack (grows &darr;)</div></div>
+          </div>
+        </div>
+        <div class="card" style="max-width:400px;flex:1">
+          <h3 style="color:#ffa657;margin-bottom:8px;font-size:.9em">Call/Return Sequence</h3>
+          <div class="code"><span class="cmt">; Caller:</span>
+<span class="kw">push</span> arg_n        <span class="cmt">; push args right to left</span>
+<span class="kw">push</span> arg_1
+<span class="kw">call</span> <span class="lbl">function</span>    <span class="cmt">; push return addr, jump</span>
+
+<span class="cmt">; Callee prologue:</span>
+<span class="kw">push</span> <span class="reg-c">%ebp</span>        <span class="cmt">; save old frame pointer</span>
+<span class="kw">mov</span>  <span class="reg-c">%esp</span>, <span class="reg-c">%ebp</span> <span class="cmt">; set new frame pointer</span>
+<span class="kw">sub</span>  $<span class="imm">N</span>, <span class="reg-c">%esp</span>   <span class="cmt">; allocate local vars</span>
+
+<span class="cmt">; Callee epilogue:</span>
+<span class="kw">mov</span>  <span class="reg-c">%ebp</span>, <span class="reg-c">%esp</span> <span class="cmt">; deallocate locals</span>
+<span class="kw">pop</span>  <span class="reg-c">%ebp</span>        <span class="cmt">; restore old frame ptr</span>
+<span class="kw">ret</span>               <span class="cmt">; pop return addr, jump</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Addressing Modes -->
+    <div id="addressing" class="diagram">
+      <h2>IA32 Addressing Modes</h2>
+      <p class="desc">Operand forms used in IA32 instructions. General form: Imm(Eb, Ei, s) = Imm + R[Eb] + R[Ei]*s</p>
+      <div class="card">
+        <table>
+          <tr><th>Type</th><th>Form</th><th>Operand Value</th><th>Example</th><th>Value (if %eax=0x100, %ecx=0x1, %edx=0x3)</th></tr>
+          <tr><td>Immediate</td><td>$Imm</td><td>Imm</td><td style="color:#d19a66">$0x1A</td><td>0x1A</td></tr>
+          <tr><td>Register</td><td>E<sub>a</sub></td><td>R[E<sub>a</sub>]</td><td style="color:#7ee787">%eax</td><td>0x100</td></tr>
+          <tr><td>Absolute</td><td>Imm</td><td>M[Imm]</td><td style="color:#58a6ff">0x8048000</td><td>M[0x8048000]</td></tr>
+          <tr><td>Indirect</td><td>(E<sub>a</sub>)</td><td>M[R[E<sub>a</sub>]]</td><td style="color:#58a6ff">(%eax)</td><td>M[0x100]</td></tr>
+          <tr><td>Base+Disp</td><td>Imm(E<sub>b</sub>)</td><td>M[Imm+R[E<sub>b</sub>]]</td><td style="color:#58a6ff">4(%eax)</td><td>M[0x104]</td></tr>
+          <tr><td>Indexed</td><td>(E<sub>b</sub>,E<sub>i</sub>)</td><td>M[R[E<sub>b</sub>]+R[E<sub>i</sub>]]</td><td style="color:#58a6ff">(%eax,%ecx)</td><td>M[0x101]</td></tr>
+          <tr><td>Scaled</td><td>Imm(E<sub>b</sub>,E<sub>i</sub>,s)</td><td>M[Imm+R[E<sub>b</sub>]+R[E<sub>i</sub>]*s]</td><td style="color:#58a6ff">8(%eax,%edx,4)</td><td>M[0x114]</td></tr>
+        </table>
+        <p style="color:#8b949e;font-size:.8em;margin-top:8px">Scale factor s can be 1, 2, 4, or 8 (matching char, short, int/float, double/pointer sizes).</p>
+      </div>
+    </div>
+
+    <!-- Control Flow -->
+    <div id="control" class="diagram">
+      <h2>Control Flow: C to Assembly</h2>
+      <p class="desc">See how C control structures translate to assembly using condition codes and jumps.</p>
+      <div class="tabs">
+        <div class="tab active" onclick="showTab('cf-if',this)">if/else</div>
+        <div class="tab" onclick="showTab('cf-loop',this)">Loops</div>
+        <div class="tab" onclick="showTab('cf-switch',this)">Switch</div>
+        <div class="tab" onclick="showTab('cf-cc',this)">Condition Codes</div>
+      </div>
+      <div id="cf-if" class="tab-content active">
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <div class="card" style="flex:1;min-width:250px">
+            <h3 style="color:#7ee787;font-size:.85em;margin-bottom:8px">C Code</h3>
+            <div class="code"><span class="kw">if</span> (x < y) {
+    result = x;
+} <span class="kw">else</span> {
+    result = y;
+}</div>
+          </div>
+          <div class="card" style="flex:1;min-width:250px">
+            <h3 style="color:#ffa657;font-size:.85em;margin-bottom:8px">Assembly (IA32)</h3>
+            <div class="code">  <span class="kw">cmpl</span>  <span class="reg-c">%edx</span>, <span class="reg-c">%eax</span>   <span class="cmt">; compare x, y</span>
+  <span class="kw">jge</span>   <span class="lbl">.L2</span>            <span class="cmt">; if x >= y, goto L2</span>
+  <span class="kw">movl</span>  <span class="reg-c">%eax</span>, <span class="reg-c">%ecx</span>   <span class="cmt">; result = x</span>
+  <span class="kw">jmp</span>   <span class="lbl">.L3</span>            <span class="cmt">; skip else</span>
+<span class="lbl">.L2:</span>
+  <span class="kw">movl</span>  <span class="reg-c">%edx</span>, <span class="reg-c">%ecx</span>   <span class="cmt">; result = y</span>
+<span class="lbl">.L3:</span></div>
+          </div>
+        </div>
+      </div>
+      <div id="cf-loop" class="tab-content">
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <div class="card" style="flex:1;min-width:250px">
+            <h3 style="color:#7ee787;font-size:.85em;margin-bottom:8px">while loop (C)</h3>
+            <div class="code"><span class="kw">while</span> (i < n) {
+    sum += arr[i];
+    i++;
+}</div>
+          </div>
+          <div class="card" style="flex:1;min-width:250px">
+            <h3 style="color:#ffa657;font-size:.85em;margin-bottom:8px">Translated (jump-to-middle)</h3>
+            <div class="code">  <span class="kw">jmp</span>   <span class="lbl">.test</span>      <span class="cmt">; goto test</span>
+<span class="lbl">.loop:</span>
+  <span class="kw">addl</span>  (<span class="reg-c">%edx</span>,<span class="reg-c">%ecx</span>,4), <span class="reg-c">%eax</span>
+  <span class="kw">addl</span>  $<span class="imm">1</span>, <span class="reg-c">%ecx</span>   <span class="cmt">; i++</span>
+<span class="lbl">.test:</span>
+  <span class="kw">cmpl</span>  <span class="reg-c">%ebx</span>, <span class="reg-c">%ecx</span> <span class="cmt">; i < n ?</span>
+  <span class="kw">jl</span>    <span class="lbl">.loop</span>      <span class="cmt">; if yes, loop</span></div>
+          </div>
+        </div>
+      </div>
+      <div id="cf-switch" class="tab-content">
+        <div class="card">
+          <h3 style="color:#ffa657;font-size:.85em;margin-bottom:8px">Switch uses a Jump Table</h3>
+          <p style="color:#8b949e;font-size:.82em;line-height:1.6">The compiler creates a jump table (array of code addresses) for switch statements. The switch variable is used as an index into this table, providing O(1) dispatch regardless of the number of cases.</p>
+          <div class="code"><span class="cmt">; Jump table at .L4:</span>
+<span class="lbl">.L4:</span>  .long <span class="lbl">.L3</span>  <span class="cmt">; case 0</span>
+      .long <span class="lbl">.L2</span>  <span class="cmt">; case 1</span>
+      .long <span class="lbl">.L5</span>  <span class="cmt">; case 2</span>
+      .long <span class="lbl">.L6</span>  <span class="cmt">; case 3</span>
+
+<span class="cmt">; Dispatch:</span>
+  <span class="kw">cmpl</span>  $<span class="imm">3</span>, <span class="reg-c">%eax</span>       <span class="cmt">; if n > 3</span>
+  <span class="kw">ja</span>    <span class="lbl">.default</span>       <span class="cmt">; goto default</span>
+  <span class="kw">jmp</span>   *<span class="lbl">.L4</span>(,<span class="reg-c">%eax</span>,4)  <span class="cmt">; goto table[n]</span></div>
+        </div>
+      </div>
+      <div id="cf-cc" class="tab-content">
+        <div class="card">
+          <h3 style="color:#ffa657;font-size:.85em;margin-bottom:8px">Condition Codes (EFLAGS)</h3>
+          <table>
+            <tr><th>Flag</th><th>Name</th><th>Set When</th></tr>
+            <tr><td style="color:#e06c75;font-weight:bold">CF</td><td>Carry Flag</td><td>Unsigned overflow (carry out of MSB)</td></tr>
+            <tr><td style="color:#7ee787;font-weight:bold">ZF</td><td>Zero Flag</td><td>Result is zero</td></tr>
+            <tr><td style="color:#58a6ff;font-weight:bold">SF</td><td>Sign Flag</td><td>Result is negative (MSB = 1)</td></tr>
+            <tr><td style="color:#d19a66;font-weight:bold">OF</td><td>Overflow Flag</td><td>Signed overflow (two's complement)</td></tr>
+          </table>
+          <p style="color:#8b949e;font-size:.8em;margin-top:8px">Set by arithmetic/logical operations. Read by conditional jump (jCC) and set (setCC) instructions. CMP = SUB without saving result. TEST = AND without saving result.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Buffer Overflow -->
+    <div id="bufover" class="diagram">
+      <h2>Buffer Overflow Attack</h2>
+      <p class="desc">When a function writes beyond a buffer's bounds on the stack, it can overwrite the return address.</p>
+      <div class="bo-diagram">
+        <div>
+          <h3 style="color:#7ee787;font-size:.85em;text-align:center;margin-bottom:8px">Normal Stack</h3>
+          <div class="bo-stack">
+            <div class="bo-cell" style="background:#c678dd22;color:#c678dd">Return Address</div>
+            <div class="bo-cell" style="background:#7ee78722;color:#7ee787">Saved %ebp</div>
+            <div class="bo-cell" style="background:#58a6ff22;color:#58a6ff">buf[12..15]</div>
+            <div class="bo-cell" style="background:#58a6ff22;color:#58a6ff">buf[8..11]</div>
+            <div class="bo-cell" style="background:#58a6ff22;color:#58a6ff">buf[4..7]</div>
+            <div class="bo-cell" style="background:#58a6ff22;color:#58a6ff">buf[0..3]</div>
+          </div>
+        </div>
+        <div>
+          <h3 style="color:#e06c75;font-size:.85em;text-align:center;margin-bottom:8px">After Overflow</h3>
+          <div class="bo-stack">
+            <div class="bo-cell" style="background:#e06c7544;color:#e06c75;font-weight:bold">OVERWRITTEN! &larr; exploit code addr</div>
+            <div class="bo-cell" style="background:#e06c7544;color:#e06c75">OVERWRITTEN!</div>
+            <div class="bo-cell" style="background:#e06c7522;color:#ffa657">overflow data</div>
+            <div class="bo-cell" style="background:#e06c7522;color:#ffa657">overflow data</div>
+            <div class="bo-cell" style="background:#58a6ff22;color:#58a6ff">buf[4..7]</div>
+            <div class="bo-cell" style="background:#58a6ff22;color:#58a6ff">buf[0..3]</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="color:#ffa657;font-size:.9em;margin-bottom:8px">Defenses Against Buffer Overflow</h3>
+        <table>
+          <tr><th>Defense</th><th>How It Works</th></tr>
+          <tr><td style="color:#7ee787">Stack Canaries</td><td>Place a random value between buffer and return address; check it before return</td></tr>
+          <tr><td style="color:#7ee787">ASLR</td><td>Randomize stack/heap/library addresses at each execution</td></tr>
+          <tr><td style="color:#7ee787">Non-executable Stack</td><td>Mark stack memory as non-executable (NX bit / DEP)</td></tr>
+          <tr><td style="color:#7ee787">Safe Functions</td><td>Use fgets/strncpy instead of gets/strcpy to limit input size</td></tr>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+<script>
+function showD(id,el){
+  document.querySelectorAll('.diagram').forEach(d=>d.classList.remove('active'));
+  document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));
+  document.getElementById(id).classList.add('active');el.classList.add('active');
+}
+function showTab(id,el){
+  el.parentElement.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  const parent=el.closest('.diagram');
+  parent.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// IA32 Registers
+const ia32=[
+  {n:'%eax',sub:['%ax','%ah','%al'],p:'Accumulator (return value)',c:'#e06c75'},
+  {n:'%ecx',sub:['%cx','%ch','%cl'],p:'Counter (loop/shift counts)',c:'#d19a66'},
+  {n:'%edx',sub:['%dx','%dh','%dl'],p:'Data (I/O, multiply/divide)',c:'#e5c07b'},
+  {n:'%ebx',sub:['%bx','%bh','%bl'],p:'Base (callee-saved)',c:'#98c379'},
+  {n:'%esi',sub:['%si','',''],p:'Source Index (callee-saved)',c:'#56b6c2'},
+  {n:'%edi',sub:['%di','',''],p:'Destination Index (callee-saved)',c:'#61afef'},
+  {n:'%esp',sub:['%sp','',''],p:'Stack Pointer',c:'#c678dd'},
+  {n:'%ebp',sub:['%bp','',''],p:'Frame/Base Pointer (callee-saved)',c:'#58a6ff'}
+];
+const rc=document.getElementById('ia32-regs');
+ia32.forEach(r=>{
+  const d=document.createElement('div');d.className='reg';
+  d.innerHTML=`<div class="name">${r.n}</div><div class="purpose">${r.p}</div>
+    <div class="reg-bar">
+      <div style="flex:1;background:${r.c}44;border-right:1px solid #30363d">${r.n} (32)</div>
+      ${r.sub[0]?`<div style="flex:1;background:${r.c}22">${r.sub[0]} (16)</div>`:''}
+    </div>
+    ${r.sub[1]?`<div style="font-size:.65em;color:#8b949e;margin-top:4px">8-bit: ${r.sub[1]} (high), ${r.sub[2]} (low)</div>`:''}`;
+  rc.appendChild(d);
+});
+
+// x86-64
+const x64Names=['%rax','%rbx','%rcx','%rdx','%rsi','%rdi','%rbp','%rsp','%r8','%r9','%r10','%r11','%r12','%r13','%r14','%r15'];
+const x64Purpose=['Return value','Callee-saved','Arg 4 / counter','Arg 3','Arg 2','Arg 1','Callee-saved (frame ptr)','Stack pointer','Arg 5','Arg 6','Caller-saved','Caller-saved','Callee-saved','Callee-saved','Callee-saved','Callee-saved'];
+const x64c=document.getElementById('x64-regs');
+const colors=['#e06c75','#98c379','#d19a66','#e5c07b','#56b6c2','#61afef','#c678dd','#58a6ff','#e06c75','#d19a66','#e5c07b','#98c379','#56b6c2','#61afef','#c678dd','#58a6ff'];
+x64Names.forEach((n,i)=>{
+  const d=document.createElement('div');d.className='reg';d.style.minWidth='140px';
+  d.innerHTML=`<div class="name">${n}</div><div class="purpose">${x64Purpose[i]}</div>
+    <div class="reg-bar"><div style="flex:1;background:${colors[i]}44">64-bit</div></div>`;
+  x64c.appendChild(d);
+});
+</script>
+</body>
+</html>

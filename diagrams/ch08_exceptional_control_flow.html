@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 8: Exceptional Control Flow - CS:APP Study Diagrams</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0d1117; color: #c9d1d9; display: flex; min-height: 100vh; }
+.sidebar { width: 260px; background: #161b22; border-right: 1px solid #30363d; padding: 20px 0; position: fixed; height: 100vh; overflow-y: auto; }
+.sidebar h2 { padding: 0 20px 15px; color: #58a6ff; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #30363d; margin-bottom: 10px; }
+.sidebar a { display: block; padding: 10px 20px; color: #8b949e; text-decoration: none; font-size: 14px; border-left: 3px solid transparent; transition: all 0.2s; }
+.sidebar a:hover, .sidebar a.active { color: #c9d1d9; background: #1c2128; border-left-color: #58a6ff; }
+.main { margin-left: 260px; flex: 1; padding: 30px 40px; }
+.main h1 { color: #58a6ff; font-size: 28px; margin-bottom: 5px; }
+.main .subtitle { color: #8b949e; margin-bottom: 25px; font-size: 15px; }
+.tab-container { display: none; }
+.tab-container.active { display: block; }
+.tab-container h2 { color: #e6edf3; font-size: 22px; margin-bottom: 15px; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+.diagram-box { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 25px; margin-bottom: 20px; }
+.info-panel { background: #1c2128; border: 1px solid #30363d; border-radius: 6px; padding: 15px 20px; margin-top: 15px; color: #8b949e; font-size: 14px; line-height: 1.7; }
+.info-panel strong { color: #e6edf3; }
+.info-panel code { background: #2d333b; padding: 2px 6px; border-radius: 3px; color: #f0883e; font-size: 13px; }
+/* Exception type table */
+.exc-table { width: 100%; border-collapse: collapse; }
+.exc-table th { background: #1c2128; color: #58a6ff; padding: 12px 14px; text-align: left; font-size: 13px; border-bottom: 2px solid #30363d; }
+.exc-table td { padding: 12px 14px; border-bottom: 1px solid #21262d; font-size: 14px; vertical-align: top; }
+.exc-table tr { cursor: pointer; transition: background 0.15s; }
+.exc-table tbody tr:hover td { background: #1c2128; }
+.exc-table .selected td { background: #1a2332; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.badge.async { background: #261a2b; color: #bc8cff; border: 1px solid #bc8cff; }
+.badge.sync { background: #1a2332; color: #58a6ff; border: 1px solid #58a6ff; }
+.exc-detail { background: #1c2128; border: 1px solid #30363d; border-radius: 6px; padding: 16px 20px; margin-top: 15px; font-size: 14px; color: #8b949e; line-height: 1.7; min-height: 60px; }
+.exc-detail .name { font-weight: 700; color: #e6edf3; font-size: 16px; margin-bottom: 5px; }
+/* Exception table diagram */
+.etable-flow { display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; margin: 20px 0; }
+.etable-box { background: #1c2128; border: 1px solid #30363d; border-radius: 8px; padding: 15px 20px; text-align: center; min-width: 150px; }
+.etable-box h4 { margin-bottom: 8px; font-size: 14px; }
+.etable-box.num h4 { color: #d29922; }
+.etable-box.tbl h4 { color: #58a6ff; }
+.etable-box.handler h4 { color: #3fb950; }
+.etable-entries { font-family: monospace; font-size: 13px; text-align: left; }
+.etable-entries div { padding: 4px 0; border-bottom: 1px solid #21262d; }
+.etable-entries div:last-child { border-bottom: none; }
+.flow-arrow { color: #484f58; font-size: 24px; }
+/* Process states */
+.state-diagram { display: flex; align-items: center; justify-content: center; gap: 30px; flex-wrap: wrap; margin: 30px 0; }
+.state-node { width: 130px; height: 130px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; cursor: pointer; transition: all 0.2s; position: relative; }
+.state-node:hover { transform: scale(1.08); }
+.state-node.running { background: #0d2818; border: 2px solid #3fb950; color: #3fb950; }
+.state-node.stopped { background: #2b2a1a; border: 2px solid #d29922; color: #d29922; }
+.state-node.terminated { background: #2b1a1a; border: 2px solid #f85149; color: #f85149; }
+.state-arrows { display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #8b949e; text-align: center; }
+.state-arrows .arr { color: #58a6ff; font-size: 20px; }
+.state-desc { text-align: center; color: #8b949e; font-size: 13px; margin-top: -15px; margin-bottom: 10px; }
+/* Fork tree */
+.fork-container { position: relative; }
+.fork-tree { display: flex; flex-direction: column; gap: 20px; }
+.fork-level { display: flex; align-items: center; justify-content: center; gap: 40px; }
+.proc-box { background: #1c2128; border: 1px solid #30363d; border-radius: 8px; padding: 14px 20px; text-align: center; min-width: 160px; cursor: pointer; transition: all 0.2s; }
+.proc-box:hover { border-color: #58a6ff; }
+.proc-box.parent { border-color: #3fb950; }
+.proc-box.child { border-color: #d29922; }
+.proc-box .pid { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+.proc-box.parent .pid { color: #3fb950; }
+.proc-box.child .pid { color: #d29922; }
+.proc-box .retval { font-size: 13px; color: #8b949e; }
+.proc-box .retval code { background: #2d333b; padding: 2px 6px; border-radius: 3px; color: #f0883e; font-size: 12px; }
+.fork-conn { text-align: center; color: #484f58; font-size: 13px; }
+.fork-conn .label { background: #161b22; padding: 2px 8px; border-radius: 4px; color: #58a6ff; font-size: 12px; }
+/* Signal table */
+.sig-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.sig-table th { background: #1c2128; color: #58a6ff; padding: 10px 14px; text-align: left; font-size: 13px; border-bottom: 2px solid #30363d; }
+.sig-table td { padding: 10px 14px; border-bottom: 1px solid #21262d; font-size: 14px; }
+.sig-table tr:hover td { background: #1c2128; }
+.sig-num { color: #d29922; font-family: monospace; font-weight: 700; }
+.sig-flow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 20px 0; }
+.sig-step { background: #1c2128; border: 1px solid #30363d; border-radius: 6px; padding: 12px 16px; text-align: center; font-size: 13px; min-width: 120px; }
+.sig-arrow { color: #484f58; font-size: 20px; }
+/* Context switch */
+.ctx-timeline { position: relative; margin: 30px 0; }
+.ctx-row { display: flex; align-items: stretch; margin-bottom: 0; }
+.ctx-label { width: 100px; padding: 15px 10px; font-weight: 700; font-size: 14px; display: flex; align-items: center; }
+.ctx-label.proc-a { color: #3fb950; }
+.ctx-label.proc-b { color: #58a6ff; }
+.ctx-label.kernel { color: #d29922; }
+.ctx-blocks { display: flex; flex: 1; }
+.ctx-block { padding: 15px; font-size: 13px; display: flex; align-items: center; justify-content: center; text-align: center; border: 1px solid #21262d; }
+.ctx-block.active-a { background: #0d2818; color: #3fb950; flex: 2; }
+.ctx-block.active-b { background: #0d1b2e; color: #58a6ff; flex: 2; }
+.ctx-block.idle { background: #161b22; color: #484f58; flex: 2; }
+.ctx-block.kernel-work { background: #2b2a1a; color: #d29922; flex: 1; }
+.ctx-block.kernel-idle { background: #161b22; color: #484f58; flex: 3; }
+.ctx-anim { margin-top: 20px; }
+.ctx-step { display: flex; align-items: center; gap: 15px; margin: 10px 0; }
+.ctx-num { width: 30px; height: 30px; border-radius: 50%; background: #58a6ff; color: #0d1117; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+.ctx-text { font-size: 14px; color: #c9d1d9; }
+.ctx-text code { background: #2d333b; padding: 2px 6px; border-radius: 3px; color: #f0883e; font-size: 13px; }
+@media (max-width: 900px) { .sidebar { display: none; } .main { margin-left: 0; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <h2>Ch 8: ECF</h2>
+  <a href="#" class="active" onclick="showTab('exception-types', this)">Exception Types</a>
+  <a href="#" onclick="showTab('exception-table', this)">Exception Table</a>
+  <a href="#" onclick="showTab('process-states', this)">Process States</a>
+  <a href="#" onclick="showTab('process-control', this)">Process Control</a>
+  <a href="#" onclick="showTab('signal-handling', this)">Signal Handling</a>
+  <a href="#" onclick="showTab('context-switch', this)">Context Switch</a>
+</nav>
+<div class="main">
+  <h1>Chapter 8: Exceptional Control Flow</h1>
+  <p class="subtitle">CS:APP - Computer Systems: A Programmer's Perspective</p>
+
+  <!-- 1. Exception Types -->
+  <div id="exception-types" class="tab-container active">
+    <h2>Exception Types</h2>
+    <div class="diagram-box">
+      <p style="color:#8b949e;font-size:13px;margin-bottom:12px;">Click a row to see details and examples</p>
+      <table class="exc-table">
+        <thead><tr><th>Class</th><th>Cause</th><th>Sync/Async</th><th>Return Behavior</th></tr></thead>
+        <tbody>
+          <tr onclick="showExc(0)" class="selected"><td><strong style="color:#bc8cff;">Interrupt</strong></td><td>Signal from I/O device</td><td><span class="badge async">Async</span></td><td>Returns to next instruction</td></tr>
+          <tr onclick="showExc(1)"><td><strong style="color:#3fb950;">Trap</strong></td><td>Intentional (syscall)</td><td><span class="badge sync">Sync</span></td><td>Returns to next instruction</td></tr>
+          <tr onclick="showExc(2)"><td><strong style="color:#d29922;">Fault</strong></td><td>Potentially recoverable error</td><td><span class="badge sync">Sync</span></td><td>Re-executes current instruction or aborts</td></tr>
+          <tr onclick="showExc(3)"><td><strong style="color:#f85149;">Abort</strong></td><td>Non-recoverable error</td><td><span class="badge sync">Sync</span></td><td>Never returns (terminates)</td></tr>
+        </tbody>
+      </table>
+      <div class="exc-detail" id="excDetail">
+        <div class="name">Interrupt</div>
+        <strong>Async</strong> &mdash; caused by events external to the processor.<br>
+        <strong>Examples:</strong> Timer interrupt, keyboard I/O, disk controller completion, network packet arrival.<br>
+        <strong>Behavior:</strong> Hardware sets the processor's interrupt pin. After current instruction completes, processor reads exception number and calls the interrupt handler. Returns to the next instruction as if nothing happened.
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Exception Table -->
+  <div id="exception-table" class="tab-container">
+    <h2>Exception Table (Interrupt Vector Table)</h2>
+    <div class="diagram-box">
+      <div class="etable-flow">
+        <div class="etable-box num">
+          <h4>Exception Number</h4>
+          <div class="etable-entries">
+            <div><span style="color:#d29922;">0</span> &mdash; Divide error</div>
+            <div><span style="color:#d29922;">13</span> &mdash; General protection</div>
+            <div><span style="color:#d29922;">14</span> &mdash; Page fault</div>
+            <div><span style="color:#d29922;">32-255</span> &mdash; OS-defined</div>
+            <div><span style="color:#d29922;">128 (0x80)</span> &mdash; System call</div>
+          </div>
+        </div>
+        <div class="flow-arrow">&#10132;</div>
+        <div class="etable-box tbl">
+          <h4>Exception Table</h4>
+          <div class="etable-entries">
+            <div>[0]: <span style="color:#58a6ff;">0xfff001</span></div>
+            <div>[13]: <span style="color:#58a6ff;">0xfff034</span></div>
+            <div>[14]: <span style="color:#58a6ff;">0xfff048</span></div>
+            <div>...</div>
+            <div>[128]: <span style="color:#58a6ff;">0xfff100</span></div>
+          </div>
+        </div>
+        <div class="flow-arrow">&#10132;</div>
+        <div class="etable-box handler">
+          <h4>Exception Handler</h4>
+          <div class="etable-entries">
+            <div style="color:#3fb950;">handler_divide()</div>
+            <div style="color:#3fb950;">handler_gp()</div>
+            <div style="color:#3fb950;">handler_pagefault()</div>
+            <div>...</div>
+            <div style="color:#3fb950;">handler_syscall()</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="info-panel">
+      <strong>How it works:</strong> The CPU uses the exception number as an index into the <strong>exception table</strong> (base address in a special register). Each entry is the address of the corresponding handler. On an exception, the CPU pushes return address + flags onto the kernel stack, then jumps to the handler.<br><br>
+      <strong>Return behavior by class:</strong><br>
+      &bull; <strong>Interrupt:</strong> <code>iret</code> to next instruction I_next<br>
+      &bull; <strong>Trap:</strong> <code>iret</code> to next instruction I_next<br>
+      &bull; <strong>Fault:</strong> <code>iret</code> to current instruction I_curr (re-execute) or abort<br>
+      &bull; <strong>Abort:</strong> Does not return &mdash; terminates the process
+    </div>
+  </div>
+
+  <!-- 3. Process States -->
+  <div id="process-states" class="tab-container">
+    <h2>Process States</h2>
+    <div class="diagram-box">
+      <div class="state-desc">Click a state to see details</div>
+      <div class="state-diagram">
+        <div class="state-node running" onclick="showState(0)">Running</div>
+        <div class="state-arrows">
+          <div><span class="arr">&larr;</span> SIGCONT</div>
+          <div>SIGSTOP/SIGTSTP <span class="arr">&rarr;</span></div>
+        </div>
+        <div class="state-node stopped" onclick="showState(1)">Stopped</div>
+      </div>
+      <div style="text-align:center;margin:10px 0;">
+        <div style="color:#484f58;font-size:20px;">&#9660;</div>
+        <div style="color:#8b949e;font-size:13px;">exit() / signal / return from main</div>
+      </div>
+      <div style="display:flex;justify-content:center;">
+        <div class="state-node terminated" onclick="showState(2)">Terminated</div>
+      </div>
+      <div class="exc-detail" id="stateDetail" style="margin-top:20px;">
+        <div class="name">Running</div>
+        The process is either executing on a CPU or waiting to be scheduled (ready). The kernel scheduler decides which running process gets CPU time. A process transitions to running when it is first created (after fork) or when it receives a SIGCONT signal.
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Process Control -->
+  <div id="process-control" class="tab-container">
+    <h2>Process Control: fork / exec / wait</h2>
+    <div class="diagram-box">
+      <h3 style="color:#e6edf3;margin-bottom:15px;">fork() Execution Tree</h3>
+      <p style="color:#8b949e;font-size:13px;margin-bottom:15px;">Click a process box for details</p>
+      <div class="fork-tree">
+        <div class="fork-level">
+          <div class="proc-box parent" onclick="showProc(0)">
+            <div class="pid">Parent (PID=1000)</div>
+            <div class="retval"><code>fork()</code> returns <strong style="color:#d29922;">child PID (1001)</strong></div>
+          </div>
+        </div>
+        <div class="fork-conn">
+          <div style="font-size:24px;color:#484f58;">&#9507;&#9473;&#9473;&#9473;&#9473;&#9473;&#9473;&#9473;&#9473;&#9473;&#9473;&#9473;&#9473;&#9515;</div>
+          <div><span class="label">fork()</span> &mdash; creates a copy of the process</div>
+        </div>
+        <div class="fork-level">
+          <div class="proc-box parent" onclick="showProc(1)">
+            <div class="pid">Parent continues</div>
+            <div class="retval">Can call <code>waitpid()</code> to reap child</div>
+          </div>
+          <div class="proc-box child" onclick="showProc(2)">
+            <div class="pid">Child (PID=1001)</div>
+            <div class="retval"><code>fork()</code> returns <strong style="color:#3fb950;">0</strong></div>
+          </div>
+        </div>
+        <div class="fork-conn">
+          <div style="color:#8b949e;font-size:13px;">Child may call <span class="label">execve()</span> to replace its program</div>
+        </div>
+        <div class="fork-level">
+          <div class="proc-box" onclick="showProc(3)" style="border-color:#bc8cff;">
+            <div class="pid" style="color:#bc8cff;">New program running</div>
+            <div class="retval"><code>execve()</code> loads new code+data, does NOT return on success</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="exc-detail" id="procDetail">
+      <div class="name">fork() Return Values</div>
+      <strong>To parent:</strong> Returns the PID of the newly created child process (positive integer).<br>
+      <strong>To child:</strong> Returns 0.<br>
+      <strong>On error:</strong> Returns -1 (no child created).<br><br>
+      Key properties: child gets an identical (but separate) copy of the parent's virtual address space, file descriptors, and signal handlers. Parent and child execute concurrently -- their relative order is nondeterministic.
+    </div>
+  </div>
+
+  <!-- 5. Signal Handling -->
+  <div id="signal-handling" class="tab-container">
+    <h2>Signal Handling</h2>
+    <div class="diagram-box">
+      <h3 style="color:#e6edf3;margin-bottom:12px;">Signal Delivery Flow</h3>
+      <div class="sig-flow">
+        <div class="sig-step" style="border-color:#f85149;color:#f85149;">Event occurs<br>(e.g., Ctrl+C)</div>
+        <div class="sig-arrow">&#10132;</div>
+        <div class="sig-step" style="border-color:#d29922;color:#d29922;">Kernel sets<br>pending bit</div>
+        <div class="sig-arrow">&#10132;</div>
+        <div class="sig-step" style="border-color:#58a6ff;color:#58a6ff;">Context switch<br>to process</div>
+        <div class="sig-arrow">&#10132;</div>
+        <div class="sig-step" style="border-color:#bc8cff;color:#bc8cff;">Kernel checks<br>pending &amp; ~blocked</div>
+        <div class="sig-arrow">&#10132;</div>
+        <div class="sig-step" style="border-color:#3fb950;color:#3fb950;">Signal handler<br>runs</div>
+      </div>
+    </div>
+    <div class="diagram-box">
+      <h3 style="color:#e6edf3;margin-bottom:12px;">Common Signals</h3>
+      <table class="sig-table">
+        <thead><tr><th>Number</th><th>Name</th><th>Default Action</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><span class="sig-num">2</span></td><td>SIGINT</td><td>Terminate</td><td>Ctrl+C from terminal</td></tr>
+          <tr><td><span class="sig-num">9</span></td><td>SIGKILL</td><td>Terminate</td><td>Kill program (cannot be caught or ignored)</td></tr>
+          <tr><td><span class="sig-num">11</span></td><td>SIGSEGV</td><td>Terminate + core</td><td>Segmentation fault (invalid memory reference)</td></tr>
+          <tr><td><span class="sig-num">14</span></td><td>SIGALRM</td><td>Terminate</td><td>Timer signal from alarm()</td></tr>
+          <tr><td><span class="sig-num">17</span></td><td>SIGCHLD</td><td>Ignore</td><td>Child process stopped or terminated</td></tr>
+          <tr><td><span class="sig-num">18</span></td><td>SIGCONT</td><td>Continue</td><td>Continue if stopped (cannot be ignored when stopped)</td></tr>
+          <tr><td><span class="sig-num">19</span></td><td>SIGSTOP</td><td>Stop</td><td>Stop process (cannot be caught or ignored)</td></tr>
+          <tr><td><span class="sig-num">20</span></td><td>SIGTSTP</td><td>Stop</td><td>Ctrl+Z from terminal</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="info-panel">
+      <strong>Key concepts:</strong><br>
+      &bull; <strong>Pending signal:</strong> Signal sent but not yet received. At most one pending signal of each type (not queued).<br>
+      &bull; <strong>Blocked signal:</strong> Process can block signals using <code>sigprocmask()</code>. Blocked signals remain pending until unblocked.<br>
+      &bull; <code>signal(signum, handler)</code> or <code>sigaction()</code> &mdash; Install a custom signal handler.<br>
+      &bull; Signals of the same type are <strong>not queued</strong>: if a second SIGCHLD arrives while the first is pending, it is discarded.
+    </div>
+  </div>
+
+  <!-- 6. Context Switch -->
+  <div id="context-switch" class="tab-container">
+    <h2>Context Switch</h2>
+    <div class="diagram-box">
+      <h3 style="color:#e6edf3;margin-bottom:15px;">Timeline</h3>
+      <div class="ctx-timeline">
+        <div class="ctx-row">
+          <div class="ctx-label proc-a">Process A</div>
+          <div class="ctx-blocks">
+            <div class="ctx-block active-a" style="flex:3;">Executing (user mode)</div>
+            <div class="ctx-block idle" style="flex:1;">idle</div>
+            <div class="ctx-block idle" style="flex:3;">idle</div>
+            <div class="ctx-block active-a" style="flex:2;">Resumed</div>
+          </div>
+        </div>
+        <div class="ctx-row">
+          <div class="ctx-label kernel">Kernel</div>
+          <div class="ctx-blocks">
+            <div class="ctx-block kernel-idle" style="flex:3;">---</div>
+            <div class="ctx-block kernel-work" style="flex:1;">Save A / Restore B</div>
+            <div class="ctx-block kernel-idle" style="flex:1;">---</div>
+            <div class="ctx-block kernel-work" style="flex:1;">Save B / Restore A</div>
+            <div class="ctx-block kernel-idle" style="flex:1;">---</div>
+          </div>
+        </div>
+        <div class="ctx-row">
+          <div class="ctx-label proc-b">Process B</div>
+          <div class="ctx-blocks">
+            <div class="ctx-block idle" style="flex:3;">idle</div>
+            <div class="ctx-block idle" style="flex:1;">idle</div>
+            <div class="ctx-block active-b" style="flex:3;">Executing (user mode)</div>
+            <div class="ctx-block idle" style="flex:2;">idle</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="diagram-box">
+      <h3 style="color:#e6edf3;margin-bottom:12px;">Context Switch Steps</h3>
+      <div class="ctx-anim">
+        <div class="ctx-step"><div class="ctx-num">1</div><div class="ctx-text"><strong>Process A</strong> is running in user mode. A timer interrupt (or syscall/fault) triggers a transition to kernel mode.</div></div>
+        <div class="ctx-step"><div class="ctx-num">2</div><div class="ctx-text"><strong>Kernel saves context of A</strong> &mdash; general-purpose registers, PC, kernel stack pointer, <code>%rsp</code>, page table base register, etc.</div></div>
+        <div class="ctx-step"><div class="ctx-num">3</div><div class="ctx-text"><strong>Kernel scheduler</strong> decides to run Process B. May be triggered by timer interrupt, I/O completion, or explicit <code>sleep()</code>/<code>read()</code>.</div></div>
+        <div class="ctx-step"><div class="ctx-num">4</div><div class="ctx-text"><strong>Kernel restores context of B</strong> &mdash; loads B's saved registers, switches to B's page table (new virtual address space).</div></div>
+        <div class="ctx-step"><div class="ctx-num">5</div><div class="ctx-text"><strong>Process B</strong> resumes execution in user mode from exactly where it left off. It has no idea a switch occurred.</div></div>
+        <div class="ctx-step"><div class="ctx-num">6</div><div class="ctx-text">Later, another interrupt triggers the reverse: <strong>save B, restore A</strong>, and Process A continues.</div></div>
+      </div>
+    </div>
+    <div class="info-panel">
+      <strong>What is a context?</strong> The kernel maintains a <em>context</em> for each process: the state needed to restart a preempted process. This includes general-purpose registers, floating-point registers, the program counter, user stack, status registers, kernel stack, and various kernel data structures (page table, process table, file table).<br><br>
+      <strong>Context switches are triggered by:</strong> system calls (e.g., <code>read()</code>, <code>sleep()</code>), interrupts (e.g., timer at ~1-10ms intervals), or faults. The scheduler uses a priority-based algorithm to pick the next process.
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(id, el) {
+  document.querySelectorAll('.tab-container').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (el) el.classList.add('active');
+}
+
+const excData = [
+  { name: 'Interrupt (Async)', desc: '<strong>Async</strong> -- caused by events external to the processor.<br><strong>Examples:</strong> Timer interrupt, keyboard I/O, disk controller completion, network packet arrival.<br><strong>Behavior:</strong> Hardware sets the processor\'s interrupt pin after the current instruction completes. CPU reads exception number from the system bus, calls the handler, and returns to the <em>next</em> instruction (I_next).' },
+  { name: 'Trap (Sync, Intentional)', desc: '<strong>Sync, intentional</strong> -- result of executing a special instruction.<br><strong>Examples:</strong> System calls like <code>read()</code>, <code>fork()</code>, <code>execve()</code>, <code>exit()</code>. On x86-64 Linux: <code>syscall</code> instruction.<br><strong>Behavior:</strong> Transfers control to kernel mode to perform a privileged operation. Returns to the <em>next</em> instruction (I_next) after the syscall completes.' },
+  { name: 'Fault (Sync, Recoverable)', desc: '<strong>Sync</strong> -- caused by an error condition that the handler might be able to fix.<br><strong>Examples:</strong> Page fault (exception 14) -- kernel loads the page from disk and re-executes the instruction. Division by zero (exception 0) -- typically fatal. General protection fault (exception 13).<br><strong>Behavior:</strong> If recoverable, handler fixes the problem and returns to the <em>current</em> instruction (I_curr) to re-execute. If not recoverable, aborts the process.' },
+  { name: 'Abort (Sync, Fatal)', desc: '<strong>Sync, non-recoverable</strong> -- caused by fatal hardware errors.<br><strong>Examples:</strong> Parity error in memory (DRAM/SRAM bit corruption), machine check abort.<br><strong>Behavior:</strong> Handler never returns to the application. It terminates the offending process immediately.' },
+];
+
+function showExc(idx) {
+  document.getElementById('excDetail').innerHTML = '<div class="name">' + excData[idx].name + '</div>' + excData[idx].desc;
+  document.querySelectorAll('.exc-table tbody tr').forEach((r, i) => r.classList.toggle('selected', i === idx));
+}
+
+const stateData = [
+  { name: 'Running', desc: 'The process is either executing on a CPU or waiting to be scheduled (ready). The kernel scheduler decides which running process gets CPU time. A process transitions to running when first created (after fork) or when it receives a SIGCONT signal.' },
+  { name: 'Stopped', desc: 'Execution is suspended and will not be scheduled until it receives a SIGCONT signal. A process stops when it receives SIGSTOP, SIGTSTP (Ctrl+Z), SIGTTIN, or SIGTTOU. Stopped processes can still receive signals (except SIGKILL/SIGSTOP which are handled immediately).' },
+  { name: 'Terminated', desc: 'The process is stopped permanently. Three reasons: (1) receiving a signal whose default action is to terminate (e.g., SIGKILL), (2) returning from main, (3) calling exit(). A terminated process exists as a zombie until reaped by its parent via waitpid().' },
+];
+
+function showState(idx) {
+  document.getElementById('stateDetail').innerHTML = '<div class="name">' + stateData[idx].name + '</div>' + stateData[idx].desc;
+}
+
+const procData = [
+  { name: 'fork() Return Values', desc: '<strong>To parent:</strong> Returns the PID of the newly created child process (positive integer).<br><strong>To child:</strong> Returns 0.<br><strong>On error:</strong> Returns -1 (no child created).<br><br>Key properties: child gets an identical (but separate) copy of the parent\'s virtual address space, file descriptors, and signal handlers. Parent and child execute concurrently -- their relative order is nondeterministic.' },
+  { name: 'Parent After fork()', desc: 'The parent process continues executing from the line after fork(). It receives the child\'s PID as the return value. The parent should eventually call <code>waitpid()</code> to reap the child; otherwise the child becomes a zombie when it terminates. If the parent terminates first, the child is adopted by the init process (PID 1).' },
+  { name: 'Child Process', desc: 'The child starts executing at the return point of fork() with return value 0. It has a new PID but shares the same code, open file descriptors (including stdin/stdout/stderr), and environment. The child typically uses <code>if (fork() == 0)</code> to branch into child-specific code, often calling <code>execve()</code>.' },
+  { name: 'execve() -- Load New Program', desc: '<code>execve(filename, argv, envp)</code> loads and runs a new program in the current process context. It overwrites the code, data, and stack with the new program. <strong>Does not return on success</strong> (since the old program no longer exists). Returns -1 on error. The PID remains the same. Open file descriptors are inherited unless marked close-on-exec.' },
+];
+
+function showProc(idx) {
+  document.getElementById('procDetail').innerHTML = '<div class="name">' + procData[idx].name + '</div>' + procData[idx].desc;
+}
+</script>
+</body>
+</html>

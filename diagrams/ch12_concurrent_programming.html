@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chapter 12: Concurrent Programming - CS:APP</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh}.header{background:linear-gradient(135deg,#161b22,#1a1f2e);padding:24px 32px;border-bottom:1px solid #30363d}.header h1{font-size:1.6em;color:#58a6ff;margin-bottom:4px}.header p{color:#8b949e;font-size:.9em}.container{display:flex;min-height:calc(100vh - 80px)}.sidebar{width:260px;background:#161b22;border-right:1px solid #30363d;padding:16px 0;flex-shrink:0}.sidebar a{display:block;padding:10px 20px;color:#8b949e;text-decoration:none;font-size:.85em;border-left:3px solid transparent;transition:all .2s}.sidebar a:hover{color:#c9d1d9;background:#1c2129}.sidebar a.active{color:#58a6ff;border-left-color:#58a6ff;background:#1c2129}.content{flex:1;padding:32px;max-width:1100px}.diagram{display:none}.diagram.active{display:block}.diagram h2{color:#58a6ff;margin-bottom:16px}.diagram p.desc{color:#8b949e;margin-bottom:24px;line-height:1.6}.card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:20px;margin:16px 0}table{width:100%;border-collapse:collapse;margin:12px 0}th,td{padding:8px 12px;text-align:left;border:1px solid #30363d;font-size:.82em}th{background:#1c2129;color:#58a6ff}
+.approach-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin:16px 0}
+.approach-card{background:#1c2129;border:2px solid #30363d;border-radius:10px;padding:16px;transition:all .3s;cursor:pointer}
+.approach-card:hover{border-color:#58a6ff;transform:translateY(-2px)}
+.approach-card h3{font-size:.9em;margin-bottom:8px}
+.approach-card .pros{color:#7ee787;font-size:.75em;margin:4px 0}
+.approach-card .cons{color:#e06c75;font-size:.75em;margin:4px 0}
+.thread-vis{display:flex;gap:16px;margin:16px 0;flex-wrap:wrap;justify-content:center;align-items:start}
+.thread-col{display:flex;flex-direction:column;gap:4px;align-items:center;min-width:120px}
+.thread-block{padding:8px 16px;border-radius:6px;font-size:.75em;text-align:center;font-weight:600;min-width:100px}
+.progress-grid{display:grid;grid-template-columns:repeat(6,40px);gap:2px;margin:16px auto;width:fit-content}
+.pg-cell{width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:.6em;border-radius:4px;cursor:pointer;transition:all .2s;font-family:monospace}
+.pg-cell:hover{transform:scale(1.1)}
+.sem-vis{display:flex;align-items:center;gap:12px;margin:16px 0;justify-content:center;flex-wrap:wrap}
+.sem-box{background:#1c2129;border:2px solid #30363d;border-radius:10px;padding:16px;text-align:center;min-width:100px}
+.sem-val{font-size:2em;font-weight:bold;font-family:monospace}
+button{background:#238636;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-size:.85em;margin:2px}button:hover{background:#2ea043}
+.btn-red{background:#da3633}.btn-red:hover{background:#f85149}
+.code{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;font-family:monospace;font-size:.78em;color:#c9d1d9;line-height:1.6;overflow-x:auto;white-space:pre}
+.deadlock-diagram{display:flex;gap:40px;justify-content:center;align-items:center;margin:24px 0;flex-wrap:wrap}
+.dl-node{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:.85em}
+.dl-arrow{font-size:1.5em}
+@media(max-width:768px){.container{flex-direction:column}.sidebar{width:100%;display:flex;overflow-x:auto}.sidebar a{white-space:nowrap}.content{padding:16px}}
+</style>
+</head>
+<body>
+<div class="header"><h1>Chapter 12: Concurrent Programming</h1><p>CS:APP - Computer Systems: A Programmer's Perspective, 2nd Edition</p></div>
+<div class="container">
+<nav class="sidebar">
+  <a href="#" class="active" onclick="showD('approaches',this)">3 Approaches</a>
+  <a href="#" onclick="showD('threads',this)">Thread Model</a>
+  <a href="#" onclick="showD('shared',this)">Shared Variables</a>
+  <a href="#" onclick="showD('semaphores',this)">Semaphores</a>
+  <a href="#" onclick="showD('prodcons',this)">Producer-Consumer</a>
+  <a href="#" onclick="showD('deadlock',this)">Deadlock</a>
+  <a href="#" onclick="showD('safety',this)">Thread Safety</a>
+  <a href="#" onclick="showD('parallelism',this)">Parallelism</a>
+</nav>
+<main class="content">
+
+  <div id="approaches" class="diagram active">
+    <h2>Three Approaches to Concurrency</h2>
+    <p class="desc">Three fundamental mechanisms for building concurrent programs.</p>
+    <div class="approach-cards">
+      <div class="approach-card" style="border-color:#58a6ff">
+        <h3 style="color:#58a6ff">Process-Based</h3>
+        <p style="color:#8b949e;font-size:.8em">fork() a new process for each client. Each process has separate address space.</p>
+        <div class="pros">+ Clean separation, no shared state bugs</div>
+        <div class="pros">+ Simple programming model</div>
+        <div class="cons">- High overhead (fork is expensive)</div>
+        <div class="cons">- Hard to share data between processes</div>
+        <div class="cons">- IPC required for communication</div>
+      </div>
+      <div class="approach-card" style="border-color:#ffa657">
+        <h3 style="color:#ffa657">I/O Multiplexing</h3>
+        <p style="color:#8b949e;font-size:.8em">Single process uses select()/epoll() to handle multiple connections event-driven.</p>
+        <div class="pros">+ Single address space, easy data sharing</div>
+        <div class="pros">+ Low overhead, very scalable</div>
+        <div class="pros">+ Full control over scheduling</div>
+        <div class="cons">- Complex coding (state machines)</div>
+        <div class="cons">- Cannot exploit multi-core CPUs</div>
+        <div class="cons">- Granularity of concurrency is coarse</div>
+      </div>
+      <div class="approach-card" style="border-color:#7ee787">
+        <h3 style="color:#7ee787">Thread-Based</h3>
+        <p style="color:#8b949e;font-size:.8em">Create threads (pthreads) for each client. Threads share the same address space.</p>
+        <div class="pros">+ Easy data sharing (shared memory)</div>
+        <div class="pros">+ Lower overhead than processes</div>
+        <div class="pros">+ Exploits multi-core parallelism</div>
+        <div class="cons">- Synchronization bugs (races, deadlocks)</div>
+        <div class="cons">- Harder to debug</div>
+        <div class="cons">- Unintentional sharing is dangerous</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="threads" class="diagram">
+    <h2>Thread Execution Model</h2>
+    <p class="desc">Threads are like lightweight processes that share the same address space.</p>
+    <div class="thread-vis">
+      <div class="thread-col">
+        <div class="thread-block" style="background:#58a6ff33;color:#58a6ff">Main Thread</div>
+        <div style="color:#8b949e;font-size:.7em">&darr; creates</div>
+        <div style="display:flex;gap:8px">
+          <div class="thread-col">
+            <div class="thread-block" style="background:#7ee78733;color:#7ee787">Peer T1</div>
+            <div style="color:#8b949e;font-size:.6em">runs concurrently</div>
+          </div>
+          <div class="thread-col">
+            <div class="thread-block" style="background:#d19a6633;color:#d19a66">Peer T2</div>
+            <div style="color:#8b949e;font-size:.6em">runs concurrently</div>
+          </div>
+          <div class="thread-col">
+            <div class="thread-block" style="background:#c678dd33;color:#c678dd">Peer T3</div>
+            <div style="color:#8b949e;font-size:.6em">runs concurrently</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">Pthreads API</h3>
+      <table>
+        <tr><th>Function</th><th>Description</th></tr>
+        <tr><td style="color:#7ee787;font-family:monospace">pthread_create(&tid, NULL, fn, arg)</td><td>Create a new thread running fn(arg)</td></tr>
+        <tr><td style="color:#7ee787;font-family:monospace">pthread_join(tid, &retval)</td><td>Wait for thread tid to terminate</td></tr>
+        <tr><td style="color:#7ee787;font-family:monospace">pthread_detach(tid)</td><td>Detach thread (auto-cleanup on exit)</td></tr>
+        <tr><td style="color:#7ee787;font-family:monospace">pthread_exit(retval)</td><td>Terminate calling thread</td></tr>
+        <tr><td style="color:#7ee787;font-family:monospace">pthread_self()</td><td>Return TID of calling thread</td></tr>
+        <tr><td style="color:#7ee787;font-family:monospace">pthread_once(&once_ctl, init_fn)</td><td>Run init_fn exactly once across all threads</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div id="shared" class="diagram">
+    <h2>Shared vs Private Memory</h2>
+    <p class="desc">Understanding what threads share is crucial for writing correct concurrent programs.</p>
+    <div class="card">
+      <table>
+        <tr><th>Memory</th><th>Shared?</th><th>Examples</th></tr>
+        <tr><td style="color:#7ee787">Global variables</td><td style="color:#e06c75;font-weight:bold">SHARED</td><td>.data and .bss segments</td></tr>
+        <tr><td style="color:#7ee787">Heap (malloc)</td><td style="color:#e06c75;font-weight:bold">SHARED</td><td>Dynamically allocated memory</td></tr>
+        <tr><td style="color:#7ee787">Code (.text)</td><td style="color:#e06c75;font-weight:bold">SHARED</td><td>All threads execute same code</td></tr>
+        <tr><td style="color:#58a6ff">Thread stack</td><td style="color:#7ee787;font-weight:bold">PRIVATE</td><td>Local variables, function args</td></tr>
+        <tr><td style="color:#58a6ff">Thread ID</td><td style="color:#7ee787;font-weight:bold">PRIVATE</td><td>Each thread has unique TID</td></tr>
+        <tr><td style="color:#58a6ff">Registers</td><td style="color:#7ee787;font-weight:bold">PRIVATE</td><td>Each thread has own register state</td></tr>
+      </table>
+      <p style="color:#e06c75;font-size:.82em;margin-top:12px"><strong>Warning:</strong> Even though stacks are "private", threads CAN access other threads' stack variables via pointers. This is a common source of bugs (e.g., passing pointer to local variable to another thread, then the local goes out of scope).</p>
+    </div>
+  </div>
+
+  <div id="semaphores" class="diagram">
+    <h2>Semaphores</h2>
+    <p class="desc">A semaphore s is a non-negative integer with two atomic operations: P (wait/down) and V (signal/up).</p>
+    <div class="sem-vis">
+      <button onclick="semP()">P(s) - Wait</button>
+      <div class="sem-box" style="border-color:#58a6ff">
+        <div style="color:#8b949e;font-size:.7em">Semaphore</div>
+        <div class="sem-val" id="sem-val" style="color:#58a6ff">3</div>
+      </div>
+      <button class="btn-red" onclick="semV()">V(s) - Signal</button>
+      <button onclick="semReset()" style="background:#30363d">Reset</button>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">Operations</h3>
+      <table>
+        <tr><th>Operation</th><th>Action</th><th>Use</th></tr>
+        <tr><td style="color:#58a6ff;font-weight:bold">P(s) / sem_wait</td><td>If s > 0, decrement s. Otherwise block until s > 0, then decrement.</td><td>Enter critical section / consume resource</td></tr>
+        <tr><td style="color:#e06c75;font-weight:bold">V(s) / sem_post</td><td>Increment s. If any threads blocked on P, wake one up.</td><td>Leave critical section / produce resource</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:8px">Mutex (Binary Semaphore)</h3>
+      <div class="code"><span style="color:#c678dd">sem_t</span> mutex;
+sem_init(&mutex, 0, <span style="color:#d19a66">1</span>);  <span style="color:#5c6370">// initial value = 1</span>
+
+P(&mutex);              <span style="color:#5c6370">// lock (enter critical section)</span>
+  cnt++;                <span style="color:#5c6370">// shared variable - safe!</span>
+V(&mutex);              <span style="color:#5c6370">// unlock (leave critical section)</span></div>
+    </div>
+  </div>
+
+  <div id="prodcons" class="diagram">
+    <h2>Producer-Consumer Problem</h2>
+    <p class="desc">Classic synchronization problem: producers add items to a bounded buffer, consumers remove them.</p>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">Three Semaphores</h3>
+      <table>
+        <tr><th>Semaphore</th><th>Initial Value</th><th>Purpose</th></tr>
+        <tr><td style="color:#7ee787;font-family:monospace">mutex</td><td>1</td><td>Protect buffer access (mutual exclusion)</td></tr>
+        <tr><td style="color:#58a6ff;font-family:monospace">slots</td><td>n (buffer size)</td><td>Count of empty slots (producer waits if 0)</td></tr>
+        <tr><td style="color:#d19a66;font-family:monospace">items</td><td>0</td><td>Count of available items (consumer waits if 0)</td></tr>
+      </table>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:16px">
+        <div style="flex:1;min-width:250px">
+          <h4 style="color:#7ee787;font-size:.85em;margin-bottom:4px">Producer</h4>
+          <div class="code">P(&slots);   <span style="color:#5c6370">// wait for empty slot</span>
+P(&mutex);   <span style="color:#5c6370">// lock buffer</span>
+  <span style="color:#8b949e">insert_item();</span>
+V(&mutex);   <span style="color:#5c6370">// unlock buffer</span>
+V(&items);   <span style="color:#5c6370">// announce new item</span></div>
+        </div>
+        <div style="flex:1;min-width:250px">
+          <h4 style="color:#58a6ff;font-size:.85em;margin-bottom:4px">Consumer</h4>
+          <div class="code">P(&items);   <span style="color:#5c6370">// wait for item</span>
+P(&mutex);   <span style="color:#5c6370">// lock buffer</span>
+  <span style="color:#8b949e">remove_item();</span>
+V(&mutex);   <span style="color:#5c6370">// unlock buffer</span>
+V(&slots);   <span style="color:#5c6370">// announce empty slot</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="deadlock" class="diagram">
+    <h2>Deadlock</h2>
+    <p class="desc">A set of threads is deadlocked when every thread is waiting for a resource held by another thread in the set.</p>
+    <div class="deadlock-diagram">
+      <div class="dl-node" style="background:#58a6ff33;border:2px solid #58a6ff;color:#58a6ff">T1<br><span style="font-size:.6em">holds A</span></div>
+      <div style="display:flex;flex-direction:column;align-items:center">
+        <div style="font-size:.7em;color:#e06c75">wants B &rarr;</div>
+        <div style="font-size:.7em;color:#e06c75">&larr; wants A</div>
+      </div>
+      <div class="dl-node" style="background:#7ee78733;border:2px solid #7ee787;color:#7ee787">T2<br><span style="font-size:.6em">holds B</span></div>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">Four Conditions for Deadlock</h3>
+      <table>
+        <tr><th>#</th><th>Condition</th><th>Description</th></tr>
+        <tr><td>1</td><td style="color:#e06c75">Mutual Exclusion</td><td>Resources cannot be shared (e.g., mutexes)</td></tr>
+        <tr><td>2</td><td style="color:#e06c75">Hold and Wait</td><td>Thread holds resources while waiting for more</td></tr>
+        <tr><td>3</td><td style="color:#e06c75">No Preemption</td><td>Resources cannot be forcibly taken away</td></tr>
+        <tr><td>4</td><td style="color:#e06c75">Circular Wait</td><td>Circular chain of threads waiting for each other</td></tr>
+      </table>
+      <p style="color:#7ee787;font-size:.82em;margin-top:12px"><strong>Prevention:</strong> Break condition 4 by always acquiring locks in the same order (lock ordering). If T1 and T2 both always lock A before B, deadlock is impossible.</p>
+    </div>
+  </div>
+
+  <div id="safety" class="diagram">
+    <h2>Thread Safety</h2>
+    <p class="desc">A function is thread-safe if it always produces correct results when called from multiple threads.</p>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">Four Classes of Thread-Unsafe Functions</h3>
+      <table>
+        <tr><th>Class</th><th>Problem</th><th>Fix</th></tr>
+        <tr><td style="color:#e06c75">1. Unprotected shared variables</td><td>Functions that read/write shared globals without synchronization</td><td>Add mutex protection</td></tr>
+        <tr><td style="color:#e06c75">2. State-dependent functions</td><td>Functions that rely on persistent state across calls (e.g., rand, strtok)</td><td>Use reentrant version (_r suffix) or pass state as argument</td></tr>
+        <tr><td style="color:#e06c75">3. Functions returning static pointers</td><td>Functions like ctime, gethostbyname that return pointer to static buffer</td><td>Use lock-and-copy: lock, call, copy result, unlock. Or use _r versions</td></tr>
+        <tr><td style="color:#e06c75">4. Functions calling unsafe functions</td><td>Transitivity: calling any unsafe function makes you unsafe</td><td>Fix the called function or protect the call</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:8px">Reentrant Functions</h3>
+      <p style="color:#8b949e;font-size:.82em;line-height:1.6">A function is <strong style="color:#7ee787">reentrant</strong> if it accesses NO shared variables. Reentrant functions are a proper subset of thread-safe functions. They require no synchronization and are the gold standard for concurrent code. All reentrant functions are thread-safe, but not all thread-safe functions are reentrant.</p>
+    </div>
+  </div>
+
+  <div id="parallelism" class="diagram">
+    <h2>Thread-Level Parallelism</h2>
+    <p class="desc">Using multiple threads to exploit multi-core processors for faster computation.</p>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:12px">Parallelizing a Sum</h3>
+      <div class="code"><span style="color:#5c6370">// Each thread sums a portion of the array</span>
+<span style="color:#c678dd">void</span> *thread_fn(<span style="color:#c678dd">void</span> *arg) {
+    <span style="color:#c678dd">int</span> myid = *((<span style="color:#c678dd">int</span>*)arg);
+    <span style="color:#c678dd">int</span> start = myid * (n / nthreads);
+    <span style="color:#c678dd">int</span> end = start + (n / nthreads);
+    <span style="color:#c678dd">double</span> local_sum = <span style="color:#d19a66">0</span>;
+    <span style="color:#c678dd">for</span> (i = start; i < end; i++)
+        local_sum += a[i];
+    psum[myid] = local_sum;  <span style="color:#5c6370">// no lock needed - separate array elements</span>
+}</div>
+    </div>
+    <div class="card">
+      <h3 style="color:#ffa657;font-size:.9em;margin-bottom:8px">Speedup</h3>
+      <table>
+        <tr><th>Threads</th><th>Speedup (ideal)</th><th>Speedup (realistic)</th><th>Limiting Factors</th></tr>
+        <tr><td>1</td><td>1x</td><td>1x</td><td>Baseline</td></tr>
+        <tr><td>2</td><td>2x</td><td>~1.8x</td><td>Synchronization overhead</td></tr>
+        <tr><td>4</td><td>4x</td><td>~3.5x</td><td>Memory bandwidth, cache contention</td></tr>
+        <tr><td>8</td><td>8x</td><td>~5-6x</td><td>Amdahl's law, serial portions</td></tr>
+      </table>
+      <p style="color:#8b949e;font-size:.8em;margin-top:8px"><strong style="color:#7ee787">Key:</strong> Minimize synchronization. Use local accumulators, then combine at the end. Avoid false sharing (threads writing to adjacent cache line locations).</p>
+    </div>
+  </div>
+
+</main></div>
+<script>
+function showD(id,el){document.querySelectorAll('.diagram').forEach(d=>d.classList.remove('active'));document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));document.getElementById(id).classList.add('active');el.classList.add('active')}
+
+let semVal=3;
+function semP(){if(semVal>0){semVal--;updateSem()}else{document.getElementById('sem-val').style.color='#e06c75';document.getElementById('sem-val').textContent='BLOCKED'}}
+function semV(){semVal++;updateSem()}
+function semReset(){semVal=3;updateSem()}
+function updateSem(){const el=document.getElementById('sem-val');el.textContent=semVal;el.style.color=semVal>0?'#58a6ff':'#e06c75'}
+</script>
+</body>
+</html>
